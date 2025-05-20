@@ -1,0 +1,6 @@
+.idea/
+data/
+.DS_Store
+.env
+__pycache__/
+sql_queries/
