@@ -35,7 +35,9 @@ class AsyncQuerySet:
 
     async def count(self):
         async with db_manager.session_maker() as session:
-            stmt = select(func.count()).select_from(self.model).filter_by(**self._filters)
+            stmt = (
+                select(func.count()).select_from(self.model).filter_by(**self._filters)
+            )
             result = await session.execute(stmt)
             return result.scalar_one()
 
@@ -59,4 +61,3 @@ class AsyncQuerySet:
                 await session.commit()
                 await session.refresh(obj)
                 return obj, True
-

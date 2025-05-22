@@ -14,7 +14,10 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     LocationPageCallbackFactory,
     MainMenuCallbackFactory,
     LocationCallbackFactory,
-    MissionCallbackFactory, RequestAnswerCallbackFactory, AchievementCallbackFactory, AchievementPageCallbackFactory,
+    MissionCallbackFactory,
+    RequestAnswerCallbackFactory,
+    AchievementCallbackFactory,
+    AchievementPageCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
@@ -24,18 +27,31 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_locations_menu_keyboard,
     get_missions_keyboard,
     get_specific_mission_keyboard,
-    get_cancel_state_keyboard, get_achievements_keyboard, get_achievement_keyboard, get_go_to_achievements_keyboard,
+    get_cancel_state_keyboard,
+    get_achievements_keyboard,
+    get_achievement_keyboard,
+    get_go_to_achievements_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     send_locations_with_image,
     get_location_info_text,
     get_mission_info_text,
     get_state_by_verification_method,
-    VERIFICATION_METHOD_TO_STATE, resend_submission, save_request_to_redis, get_missions_with_score,
+    VERIFICATION_METHOD_TO_STATE,
+    resend_submission,
+    save_request_to_redis,
+    get_missions_with_score,
     get_user_achievements,
 )
 from yandex_eco_fest_bot.core.redis_config import r
-from yandex_eco_fest_bot.db.tables import User, Location, Mission, UserMissionSubmission, Achievement, UserAchievement
+from yandex_eco_fest_bot.db.tables import (
+    User,
+    Location,
+    Mission,
+    UserMissionSubmission,
+    Achievement,
+    UserAchievement,
+)
 
 dp = Dispatcher()
 router = Router()
@@ -68,14 +84,12 @@ async def handle_after_start_callback(call: CallbackQuery):
 
 @router.callback_query(MainMenuCallbackFactory.filter())
 async def handle_main_menu_callback(
-        call: CallbackQuery, callback_data: MainMenuCallbackFactory, state: FSMContext
+    call: CallbackQuery, callback_data: MainMenuCallbackFactory, state: FSMContext
 ):
     state_data = await state.get_data()
     if msg_id := state_data.get("msg_id"):
         await call.bot.edit_message_reply_markup(
-            chat_id=call.from_user.id,
-            message_id=msg_id,
-            reply_markup=None
+            chat_id=call.from_user.id, message_id=msg_id, reply_markup=None
         )
 
     await state.clear()
@@ -109,6 +123,7 @@ async def handle_main_menu_command(message: Message):
 
 # Locations
 
+
 @router.callback_query(F.data == ButtonsStorage.LOCATIONS_MAP.callback)
 async def handle_location_map_callback(call: CallbackQuery):
     await call.message.delete()
@@ -118,7 +133,7 @@ async def handle_location_map_callback(call: CallbackQuery):
 
 @router.callback_query(LocationPageCallbackFactory.filter())
 async def handle_location_page_callback(
-        call: CallbackQuery, callback_data: LocationPageCallbackFactory
+    call: CallbackQuery, callback_data: LocationPageCallbackFactory
 ):
     locations = await Location.objects.filter(parent=None).all()
     await call.message.edit_reply_markup(
@@ -130,7 +145,7 @@ async def handle_location_page_callback(
 
 @router.callback_query(LocationCallbackFactory.filter())
 async def handle_location_callback(
-        call: CallbackQuery, callback_data: LocationCallbackFactory, state: FSMContext
+    call: CallbackQuery, callback_data: LocationCallbackFactory, state: FSMContext
 ):
     await state.clear()
 
@@ -144,8 +159,9 @@ async def handle_location_callback(
         )
     else:
 
-        missions_status_score_schema: LocationMissionsStatus = await get_missions_with_score(user_id=call.from_user.id,
-                                                                                             location=location)
+        missions_status_score_schema: LocationMissionsStatus = (
+            await get_missions_with_score(user_id=call.from_user.id, location=location)
+        )
         reply_markup = get_missions_keyboard(missions_status_score_schema)
 
     kwargs = {"text": text, "reply_markup": reply_markup, "parse_mode": ParseMode.HTML}
@@ -160,12 +176,14 @@ async def handle_location_callback(
 
 @router.callback_query(MissionCallbackFactory.filter())
 async def handle_mission_callback(
-        call: CallbackQuery, callback_data: MissionCallbackFactory, state: FSMContext
+    call: CallbackQuery, callback_data: MissionCallbackFactory, state: FSMContext
 ):
     await state.clear()
 
     mission = await Mission.objects.get(id=callback_data.id)
-    old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(mission_id=mission.id).first()
+    old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
+        mission_id=mission.id
+    ).first()
     status = old_submission.status if old_submission else None
 
     text = get_mission_info_text(mission, status)
@@ -236,8 +254,8 @@ async def handle_picture_submission(message: Message, state: FSMContext):
                 reply_markup=get_go_to_main_menu_keyboard(
                     text_storage.GO_BACK_TO_MAIN_MENU,
                     with_new_message=True,
-                    with_delete_markup=True
-                )
+                    with_delete_markup=True,
+                ),
             )
 
             return
@@ -248,8 +266,8 @@ async def handle_picture_submission(message: Message, state: FSMContext):
                 reply_markup=get_go_to_main_menu_keyboard(
                     text_storage.GO_BACK_TO_MAIN_MENU,
                     with_new_message=True,
-                    with_delete_markup=True
-                )
+                    with_delete_markup=True,
+                ),
             )
 
             return
@@ -257,20 +275,22 @@ async def handle_picture_submission(message: Message, state: FSMContext):
         await old_submission.delete()
 
     file_id = message.photo[-1].file_id
-    user_submission = await resend_submission(message.bot, mission, message.from_user, file_id=file_id)
+    user_submission = await resend_submission(
+        message.bot, mission, message.from_user, file_id=file_id
+    )
 
     await message.bot.edit_message_reply_markup(
-        chat_id=message.from_user.id,
-        message_id=msg_id,
-        reply_markup=None
+        chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
     )
 
     message = await message.answer(
-        text=text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(request_status=RequestStatus.PENDING.label),
+        text=text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
+            request_status=RequestStatus.PENDING.label
+        ),
         reply_markup=get_go_to_main_menu_keyboard(
             button_text=text_storage.GREAT,
             with_new_message=True,
-            with_delete_markup=True
+            with_delete_markup=True,
         ),
         parse_mode=ParseMode.HTML,
     )
@@ -280,7 +300,7 @@ async def handle_picture_submission(message: Message, state: FSMContext):
 
 @router.callback_query(RequestAnswerCallbackFactory.filter())
 async def handle_request_answer_callback(
-        call: CallbackQuery, callback_data: RequestAnswerCallbackFactory
+    call: CallbackQuery, callback_data: RequestAnswerCallbackFactory
 ):
     request_id = callback_data.request_id
     is_accepted = callback_data.is_accepted
@@ -292,16 +312,10 @@ async def handle_request_answer_callback(
 
     if mission.verification_method == MissionVerificationMethod.PHOTO:
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
-        await call.message.edit_caption(
-            caption=text,
-            reply_markup=None
-        )
+        await call.message.edit_caption(caption=text, reply_markup=None)
     else:
         text = f"{call.message.text}\n\nСтатус: {status.label}"
-        await call.message.edit_text(
-            text=text,
-            reply_markup=None
-        )
+        await call.message.edit_text(text=text, reply_markup=None)
 
     user_mission_submission.status = status
     await user_mission_submission.save()
@@ -329,7 +343,7 @@ async def handle_request_answer_callback(
         reply_markup = get_go_to_main_menu_keyboard(
             button_text=text_storage.GREAT,
             with_new_message=True,
-            with_delete_markup=True
+            with_delete_markup=True,
         )
 
     else:
@@ -345,7 +359,7 @@ async def handle_request_answer_callback(
         reply_markup = get_go_to_main_menu_keyboard(
             button_text=text_storage.GOT_IT,
             with_new_message=True,
-            with_delete_markup=True
+            with_delete_markup=True,
         )
 
     if message_id:
@@ -365,18 +379,18 @@ async def handle_request_answer_callback(
 
 # Personal progres
 
+
 @router.callback_query(F.data == ButtonsStorage.MY_PROGRES.callback)
 async def handle_my_progres_callback(call: CallbackQuery):
     user_score = await UserMissionSubmission.objects.filter(
-        user_id=call.from_user.id,
-        status=RequestStatus.ACCEPTED
+        user_id=call.from_user.id, status=RequestStatus.ACCEPTED
     ).all()
     missions_score = sum([submission.score for submission in user_score])
 
     await call.message.edit_text(
         text=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score),
         reply_markup=get_go_to_achievements_keyboard(),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -388,47 +402,57 @@ async def handle_my_progres_callback(call: CallbackQuery):
     await call.message.edit_text(
         text=text_storage.ACHIEVEMENTS_TEXT,
         reply_markup=get_achievements_keyboard(user_achievements),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
     )
 
 
 @router.callback_query(AchievementCallbackFactory.filter())
-async def handle_achievement_callback(call: CallbackQuery, callback_data: AchievementCallbackFactory):
+async def handle_achievement_callback(
+    call: CallbackQuery, callback_data: AchievementCallbackFactory
+):
     achievement = await Achievement.objects.get(id=callback_data.id)
 
     user_achievement = await UserAchievement.objects.filter(
         user_id=call.from_user.id, achievement_id=achievement.id
     ).first()
 
-    text = text_storage.ACHIEVEMENT_TEXT if not user_achievement else text_storage.ACHIEVEMENT_RECEIVED_TEXT
+    text = (
+        text_storage.ACHIEVEMENT_TEXT
+        if not user_achievement
+        else text_storage.ACHIEVEMENT_RECEIVED_TEXT
+    )
 
     await call.message.edit_text(
         text=text.format(
             achievement_name=achievement.name,
-            achievement_description=achievement.description
+            achievement_description=achievement.description,
         ),
         reply_markup=get_achievement_keyboard(achievement),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
     )
 
 
 @router.callback_query(AchievementPageCallbackFactory.filter())
-async def handle_achievement_page_callback(call: CallbackQuery, callback_data: AchievementPageCallbackFactory):
+async def handle_achievement_page_callback(
+    call: CallbackQuery, callback_data: AchievementPageCallbackFactory
+):
     user_score = await UserMissionSubmission.objects.filter(
-        user_id=call.from_user.id,
-        status=RequestStatus.ACCEPTED
+        user_id=call.from_user.id, status=RequestStatus.ACCEPTED
     ).all()
     missions_score = sum([submission.score for submission in user_score])
 
     user_achievements = await get_user_achievements(call.from_user.id)
     await call.message.edit_text(
         text=text_storage.ACHIEVEMENTS_TEXT.format(score=missions_score),
-        reply_markup=get_achievements_keyboard(user_achievements, page_num=callback_data.page),
-        parse_mode=ParseMode.HTML
+        reply_markup=get_achievements_keyboard(
+            user_achievements, page_num=callback_data.page
+        ),
+        parse_mode=ParseMode.HTML,
     )
 
 
 # Team Score
+
 
 @router.callback_query(F.data == ButtonsStorage.TEAM_PROGRES.callback)
 async def handle_my_progres_callback(call: CallbackQuery):
@@ -438,6 +462,8 @@ async def handle_my_progres_callback(call: CallbackQuery):
     missions_score = sum([submission.score for submission in user_score])
     await call.message.edit_text(
         text=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
-        reply_markup=get_go_to_main_menu_keyboard(button_text=text_storage.GO_BACK_TO_MAIN_MENU),
-        parse_mode=ParseMode.HTML
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text=text_storage.GO_BACK_TO_MAIN_MENU
+        ),
+        parse_mode=ParseMode.HTML,
     )

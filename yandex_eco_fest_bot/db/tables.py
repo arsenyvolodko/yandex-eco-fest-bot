@@ -113,7 +113,9 @@ class UserMissionSubmission(BaseTable):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     mission_id: Mapped[int] = mapped_column(ForeignKey("mission.id"), nullable=False)
     status: Mapped[RequestStatus] = mapped_column(
-        SAEnum(RequestStatus, name="user_mission_status"), nullable=False, default=RequestStatus.PENDING
+        SAEnum(RequestStatus, name="user_mission_status"),
+        nullable=False,
+        default=RequestStatus.PENDING,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
@@ -153,16 +155,10 @@ class UserAchievement(BaseTable):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    achievement_id: Mapped[int] = mapped_column(
-        ForeignKey("achievement.id")
-    )
+    achievement_id: Mapped[int] = mapped_column(ForeignKey("achievement.id"))
 
     user: Mapped["User"] = relationship(User, lazy="selectin")
-    achievement: Mapped["Achievement"] = relationship(
-        Achievement, lazy="selectin"
-    )
+    achievement: Mapped["Achievement"] = relationship(Achievement, lazy="selectin")
 
     def __str__(self):
-        return (
-            f"UserAchievement(id={self.id}, user_id={self.user_id}, achievement_id={self.achievement_id})"
-        )
+        return f"UserAchievement(id={self.id}, user_id={self.user_id}, achievement_id={self.achievement_id})"

@@ -3,13 +3,22 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from yandex_eco_fest_bot.bot import text_storage
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus, AchievementStatus
-from yandex_eco_fest_bot.bot.tools.factories import LocationCallbackFactory, LocationPageCallbackFactory, \
-    MainMenuCallbackFactory, MissionCallbackFactory, RequestAnswerCallbackFactory, AchievementCallbackFactory, \
-    AchievementPageCallbackFactory
+from yandex_eco_fest_bot.bot.tools.factories import (
+    LocationCallbackFactory,
+    LocationPageCallbackFactory,
+    MainMenuCallbackFactory,
+    MissionCallbackFactory,
+    RequestAnswerCallbackFactory,
+    AchievementCallbackFactory,
+    AchievementPageCallbackFactory,
+)
 from yandex_eco_fest_bot.bot.tools.keyboards.button import Button
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
-from yandex_eco_fest_bot.bot.tools.keyboards.utils import LOCATIONS_PER_PAGE, get_page_number_by_location, \
-    get_mission_display_button
+from yandex_eco_fest_bot.bot.tools.keyboards.utils import (
+    LOCATIONS_PER_PAGE,
+    get_page_number_by_location,
+    get_mission_display_button,
+)
 from yandex_eco_fest_bot.db.tables import Location, Mission, Achievement
 
 
@@ -26,10 +35,10 @@ def get_one_button_keyboard(button: Button, button_text=None) -> InlineKeyboardM
 
 
 def get_go_to_main_menu_keyboard(
-        button_text: str = text_storage.GO_TO_MAIN_MENU,
-        with_new_message: bool = False,
-        with_delete_markup: bool = False,
-        delete_message: bool = False
+    button_text: str = text_storage.GO_TO_MAIN_MENU,
+    with_new_message: bool = False,
+    with_delete_markup: bool = False,
+    delete_message: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(
@@ -54,12 +63,17 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-def get_locations_menu_keyboard(locations: list[Location], page_number: int = 1,
-                                back_to_locations_parent: Location = None) -> InlineKeyboardMarkup:
+def get_locations_menu_keyboard(
+    locations: list[Location],
+    page_number: int = 1,
+    back_to_locations_parent: Location = None,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     locations.sort(key=lambda x: x.order)
-    paginated_locations = get_paginated_objects(locations, page_number, LOCATIONS_PER_PAGE)
+    paginated_locations = get_paginated_objects(
+        locations, page_number, LOCATIONS_PER_PAGE
+    )
 
     for location in paginated_locations:
         builder.button(
@@ -101,13 +115,19 @@ def get_locations_menu_keyboard(locations: list[Location], page_number: int = 1,
             ),
         )
 
-    extra_buttons = int(page_number > 1) + 1 + int(page_number < len(locations) // LOCATIONS_PER_PAGE + 1)
+    extra_buttons = (
+        int(page_number > 1)
+        + 1
+        + int(page_number < len(locations) // LOCATIONS_PER_PAGE + 1)
+    )
 
     builder.adjust(*[1] * len(paginated_locations), extra_buttons)
     return builder.as_markup()
 
 
-def get_missions_keyboard(mission_display_schema: LocationMissionsStatus) -> InlineKeyboardMarkup:
+def get_missions_keyboard(
+    mission_display_schema: LocationMissionsStatus,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     missions_statuses = mission_display_schema.missions
@@ -138,7 +158,7 @@ def get_specific_mission_keyboard(mission: Mission) -> InlineKeyboardMarkup:
         callback_data=LocationCallbackFactory(
             id=mission.location_id,
             with_new_message=False,
-        )
+        ),
     )
 
     builder.adjust(1)
@@ -188,11 +208,10 @@ def get_go_to_achievements_keyboard() -> InlineKeyboardMarkup:
 
     builder.button(
         text=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.text,
-        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback
+        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback,
     )
     builder.button(
-        text=text_storage.GO_BACK_TO_MAIN_MENU,
-        callback_data=MainMenuCallbackFactory()
+        text=text_storage.GO_BACK_TO_MAIN_MENU, callback_data=MainMenuCallbackFactory()
     )
 
     builder.adjust(1)
@@ -200,8 +219,9 @@ def get_go_to_achievements_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_achievements_keyboard(achievement_display_schema: list[AchievementStatus],
-                              page_num: int = 1) -> InlineKeyboardMarkup:
+def get_achievements_keyboard(
+    achievement_display_schema: list[AchievementStatus], page_num: int = 1
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     if page_num == 1:
@@ -225,8 +245,7 @@ def get_achievements_keyboard(achievement_display_schema: list[AchievementStatus
         page_btn_callback = AchievementPageCallbackFactory(page=2)
 
         builder.button(
-            text=text_storage.GO_BACK,
-            callback_data=ButtonsStorage.MY_PROGRES.callback
+            text=text_storage.GO_BACK, callback_data=ButtonsStorage.MY_PROGRES.callback
         )
 
         builder.button(
@@ -243,8 +262,7 @@ def get_achievements_keyboard(achievement_display_schema: list[AchievementStatus
         )
 
         builder.button(
-            text=text_storage.GO_BACK,
-            callback_data=ButtonsStorage.MY_PROGRES.callback
+            text=text_storage.GO_BACK, callback_data=ButtonsStorage.MY_PROGRES.callback
         )
 
     builder.adjust(*[1] * 6, 2)
@@ -260,7 +278,7 @@ def get_achievement_keyboard(achievement: Achievement) -> InlineKeyboardMarkup:
         text=text_storage.GO_BACK,
         callback_data=AchievementPageCallbackFactory(
             page=page_num,
-        )
+        ),
     )
 
     builder.adjust(1)

@@ -12,7 +12,9 @@ class LocationCallbackFactory(CallbackData, prefix="location_callback_factory"):
     with_new_message: bool = True
 
 
-class LocationPageCallbackFactory(CallbackData, prefix="location_page_callback_factory"):
+class LocationPageCallbackFactory(
+    CallbackData, prefix="location_page_callback_factory"
+):
     page: int
 
 
@@ -20,7 +22,9 @@ class MissionCallbackFactory(CallbackData, prefix="mission_callback_factory"):
     id: int
 
 
-class RequestAnswerCallbackFactory(CallbackData, prefix="request_answer_callback_factory"):
+class RequestAnswerCallbackFactory(
+    CallbackData, prefix="request_answer_callback_factory"
+):
     request_id: int
     is_accepted: bool
 
@@ -29,5 +33,7 @@ class AchievementCallbackFactory(CallbackData, prefix="achievement_callback_fact
     id: int
 
 
-class AchievementPageCallbackFactory(CallbackData, prefix="achievement_page_callback_factory"):
+class AchievementPageCallbackFactory(
+    CallbackData, prefix="achievement_page_callback_factory"
+):
     page: int

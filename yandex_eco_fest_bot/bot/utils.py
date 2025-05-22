@@ -21,7 +21,13 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
 )
 from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
-from yandex_eco_fest_bot.db.tables import Location, Mission, UserMissionSubmission, Achievement, UserAchievement
+from yandex_eco_fest_bot.db.tables import (
+    Location,
+    Mission,
+    UserMissionSubmission,
+    Achievement,
+    UserAchievement,
+)
 
 
 async def send_locations_with_image(call: CallbackQuery, locations: list[Location]):
@@ -47,11 +53,11 @@ async def send_locations_with_image(call: CallbackQuery, locations: list[Locatio
 
 
 async def resend_submission(
-        bot,
-        mission: Mission,
-        user: User,
-        file_id: str | None = None,
-        text: str | None = None,
+    bot,
+    mission: Mission,
+    user: User,
+    file_id: str | None = None,
+    text: str | None = None,
 ) -> UserMissionSubmission:
     location = await Location.objects.get(id=mission.location_id)
 
@@ -88,7 +94,7 @@ async def resend_submission(
 
 
 async def get_missions_with_score(
-        user_id: int, location: Location
+    user_id: int, location: Location
 ) -> LocationMissionsStatus:
     user_submissions: list[UserMissionSubmission] = (
         await UserMissionSubmission.objects.filter(user_id=user_id).all()
@@ -164,13 +170,16 @@ def get_mission_info_text(mission: Mission, status: RequestStatus | None) -> str
 
 async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
     achievements = await Achievement.objects.all()
-    user_achievements_set = set(await UserAchievement.objects.filter(user_id=user_id).all())
+    user_achievements_set = set(
+        await UserAchievement.objects.filter(user_id=user_id).all()
+    )
 
     res_achievements: list[AchievementStatus] = [
         AchievementStatus(
             achievement=achievement,
             is_succeeded=True if achievement in user_achievements_set else False,
-        ) for achievement in achievements
+        )
+        for achievement in achievements
     ]
 
     return res_achievements
@@ -183,6 +192,6 @@ VERIFICATION_METHOD_TO_STATE = {
 
 
 def get_state_by_verification_method(
-        verification_method: MissionVerificationMethod,
+    verification_method: MissionVerificationMethod,
 ) -> State:
     return VERIFICATION_METHOD_TO_STATE[verification_method]

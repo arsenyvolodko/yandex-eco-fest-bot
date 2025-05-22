@@ -10,6 +10,7 @@ from yandex_eco_fest_bot.db.core.db_manager import db_manager
 async def main() -> None:
     await db_manager.init()
     from yandex_eco_fest_bot.bot.bot import dp
+
     await dp.start_polling(bot)
 
 

@@ -16,6 +16,7 @@ class BaseTable(AsyncAttrs, DeclarativeBase):
 
     async def save(self):
         from yandex_eco_fest_bot.db.core.db_manager import db_manager
+
         async with db_manager.session_maker() as session:
             session.add(self)
             await session.commit()
@@ -23,6 +24,7 @@ class BaseTable(AsyncAttrs, DeclarativeBase):
 
     async def delete(self):
         from yandex_eco_fest_bot.db.core.db_manager import db_manager
+
         async with db_manager.session_maker() as session:
             await session.delete(self)
             await session.commit()
