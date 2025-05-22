@@ -170,9 +170,11 @@ def get_mission_info_text(mission: Mission, status: RequestStatus | None) -> str
 
 async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
     achievements = await Achievement.objects.all()
-    user_achievements_set = set(
-        await UserAchievement.objects.filter(user_id=user_id).all()
-    )
+    user_achievements = await UserAchievement.objects.filter(user_id=user_id).all()
+
+    user_achievements_set = set([user_achievement.achievement for user_achievement in user_achievements])
+    print(achievements)
+    print(user_achievements_set)
 
     res_achievements: list[AchievementStatus] = [
         AchievementStatus(
@@ -181,6 +183,22 @@ async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
         )
         for achievement in achievements
     ]
+    # res_achievements = []
+    #
+    # for achievement in achievements:
+    #     print("cur:", achievement)
+    #     is_succeeded = False
+    #     if achievement in user_achievements_set:
+    #         print("in")
+    #         is_succeeded = True
+    #     res_achievements.append(
+    #         AchievementStatus(
+    #             achievement=achievement,
+    #             is_succeeded=is_succeeded
+    #         )
+    #     )
+    #
+    # print(res_achievements)
 
     return res_achievements
 

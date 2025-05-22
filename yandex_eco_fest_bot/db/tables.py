@@ -139,7 +139,7 @@ class Achievement(BaseTable):
     description: Mapped[str] = mapped_column(Text(), nullable=True)
 
     def __eq__(self, other):
-        if isinstance(other, Location):
+        if isinstance(other, Achievement):
             return self.id == other.id
         return False
 

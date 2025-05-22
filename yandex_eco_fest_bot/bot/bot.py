@@ -385,7 +385,7 @@ async def handle_my_progres_callback(call: CallbackQuery):
     user_score = await UserMissionSubmission.objects.filter(
         user_id=call.from_user.id, status=RequestStatus.ACCEPTED
     ).all()
-    missions_score = sum([submission.score for submission in user_score])
+    missions_score = sum([submission.mission.score for submission in user_score])
 
     await call.message.edit_text(
         text=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score),
@@ -439,7 +439,7 @@ async def handle_achievement_page_callback(
     user_score = await UserMissionSubmission.objects.filter(
         user_id=call.from_user.id, status=RequestStatus.ACCEPTED
     ).all()
-    missions_score = sum([submission.score for submission in user_score])
+    missions_score = sum([submission.mission.score for submission in user_score])
 
     user_achievements = await get_user_achievements(call.from_user.id)
     await call.message.edit_text(
@@ -459,7 +459,7 @@ async def handle_my_progres_callback(call: CallbackQuery):
     user_score = await UserMissionSubmission.objects.filter(
         status=RequestStatus.ACCEPTED
     ).all()
-    missions_score = sum([submission.score for submission in user_score])
+    missions_score = sum([submission.mission.score for submission in user_score])
     await call.message.edit_text(
         text=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
         reply_markup=get_go_to_main_menu_keyboard(
