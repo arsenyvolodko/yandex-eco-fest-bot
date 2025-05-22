@@ -19,3 +19,5 @@ class ButtonsStorage(metaclass=AutoNameButtonMeta):
     MY_PROGRES = Button("🏆 Мой прогресс")
     TEAM_PROGRES = Button("🌳 Командный вклад")
     HELP = Button("ℹ️ Помощь")
+
+    GO_TO_ACHIEVEMENTS_BUTTON = Button("🥇Бейджи")

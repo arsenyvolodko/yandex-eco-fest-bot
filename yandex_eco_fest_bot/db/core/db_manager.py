@@ -3,7 +3,14 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from yandex_eco_fest_bot.core.config import DATABASE_URL
 from yandex_eco_fest_bot.db.core.base_table import BaseTable
 from yandex_eco_fest_bot.db.core.engine_manager import EngineManager
-from yandex_eco_fest_bot.db.tables import Location, Mission, User, UserMissionScore  # do not delete
+from yandex_eco_fest_bot.db.tables import (  # noqa
+    Location,
+    Mission,
+    User,
+    UserMissionSubmission,
+    Achievement,
+    UserAchievement,
+)
 
 
 class DBManager:
@@ -18,4 +25,3 @@ class DBManager:
 
 
 db_manager = DBManager()
-

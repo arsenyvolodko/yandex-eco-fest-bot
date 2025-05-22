@@ -20,3 +20,9 @@ class BaseTable(AsyncAttrs, DeclarativeBase):
             session.add(self)
             await session.commit()
             await session.refresh(self)
+
+    async def delete(self):
+        from yandex_eco_fest_bot.db.core.db_manager import db_manager
+        async with db_manager.session_maker() as session:
+            await session.delete(self)
+            await session.commit()
