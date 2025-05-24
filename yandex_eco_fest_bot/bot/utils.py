@@ -1,8 +1,9 @@
 from collections import defaultdict
 
+from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.fsm.state import State
-from aiogram.types import CallbackQuery, FSInputFile, User
+from aiogram.types import CallbackQuery, FSInputFile, User, InputMediaPhoto
 
 from yandex_eco_fest_bot.bot import text_storage
 from yandex_eco_fest_bot.bot.enums import RequestStatus
@@ -14,6 +15,7 @@ from yandex_eco_fest_bot.bot.schemas.missions_display_schema import (
     MissionStatus,
     LocationMissionsStatus,
 )
+from yandex_eco_fest_bot.bot.static import VERIFICATION_METHOD_TO_STATE
 from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_locations_menu_keyboard,
@@ -52,45 +54,33 @@ async def send_locations_with_image(call: CallbackQuery, locations: list[Locatio
     )
 
 
-async def resend_submission(
-    bot,
-    mission: Mission,
-    user: User,
-    file_id: str | None = None,
-    text: str | None = None,
-) -> UserMissionSubmission:
-    location = await Location.objects.get(id=mission.location_id)
-
-    user_mission_submission = await UserMissionSubmission.objects.create(
-        user_id=user.id,
-        mission_id=mission.id,
-    )
-
-    text = text_storage.SUBMISSION_REQUEST_TEXT.format(
-        username=user.username,
-        mission_name=mission.name,
-    )
-
-    kwargs = {
-        "chat_id": location.chat_id,
-        "reply_markup": get_submission_options_keyboard(user_mission_submission.id),
-        "parse_mode": ParseMode.HTML,
-    }
-
-    if not file_id:
-        await bot.send_message(
-            text=text,
-            **kwargs,
-        )
-        return user_mission_submission
-
+async def resend_submission_photo_util(
+    bot: Bot, text: str, file_id: str, resend_kwargs: dict
+):
     await bot.send_photo(
         photo=file_id,
         caption=text,
-        **kwargs,
+        **resend_kwargs,
     )
 
-    return user_mission_submission
+
+async def resend_submission_text_util(
+    bot: Bot, text: str, resend_kwargs: dict
+):
+    await bot.send_message(
+        text=text,
+        **resend_kwargs,
+    )
+
+
+async def resend_submission_voice_util(
+    bot: Bot, text: str, file_id: str, resend_kwargs: dict
+):
+    await bot.send_voice(
+        voice=file_id,
+        caption=text,
+        **resend_kwargs,
+    )
 
 
 async def get_missions_with_score(
@@ -173,8 +163,6 @@ async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
     user_achievements = await UserAchievement.objects.filter(user_id=user_id).all()
 
     user_achievements_set = set([user_achievement.achievement for user_achievement in user_achievements])
-    print(achievements)
-    print(user_achievements_set)
 
     res_achievements: list[AchievementStatus] = [
         AchievementStatus(
@@ -183,33 +171,16 @@ async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
         )
         for achievement in achievements
     ]
-    # res_achievements = []
-    #
-    # for achievement in achievements:
-    #     print("cur:", achievement)
-    #     is_succeeded = False
-    #     if achievement in user_achievements_set:
-    #         print("in")
-    #         is_succeeded = True
-    #     res_achievements.append(
-    #         AchievementStatus(
-    #             achievement=achievement,
-    #             is_succeeded=is_succeeded
-    #         )
-    #     )
-    #
-    # print(res_achievements)
 
     return res_achievements
-
-
-VERIFICATION_METHOD_TO_STATE = {
-    MissionVerificationMethod.PHOTO: states.WAITING_FOR_PICTURE_SUBMISSION,
-    MissionVerificationMethod.TEXT: states.WAITING_FOR_TEXT_SUBMISSION,
-}
 
 
 def get_state_by_verification_method(
     verification_method: MissionVerificationMethod,
 ) -> State:
     return VERIFICATION_METHOD_TO_STATE[verification_method]
+
+
+def check_verification_code(mission: Mission, message_text: str):
+    expected_text = mission.verification_message.strip().lower()
+    return expected_text == message_text.strip().lower()

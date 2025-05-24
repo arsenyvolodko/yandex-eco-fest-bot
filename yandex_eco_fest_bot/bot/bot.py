@@ -9,6 +9,7 @@ from aiogram.types import Message, CallbackQuery
 from yandex_eco_fest_bot.bot import text_storage
 from yandex_eco_fest_bot.bot.enums import RequestStatus, MissionVerificationMethod
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus
+from yandex_eco_fest_bot.bot.static import CAPTION_TYPE_VERIFICATION_METHODS
 from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.factories import (
     LocationPageCallbackFactory,
@@ -30,7 +31,7 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_cancel_state_keyboard,
     get_achievements_keyboard,
     get_achievement_keyboard,
-    get_go_to_achievements_keyboard,
+    get_go_to_achievements_keyboard, get_submission_options_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     send_locations_with_image,
@@ -38,10 +39,10 @@ from yandex_eco_fest_bot.bot.utils import (
     get_mission_info_text,
     get_state_by_verification_method,
     VERIFICATION_METHOD_TO_STATE,
-    resend_submission,
     save_request_to_redis,
     get_missions_with_score,
-    get_user_achievements,
+    get_user_achievements, resend_submission_photo_util, resend_submission_text_util, resend_submission_voice_util,
+    check_verification_code
 )
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -193,7 +194,6 @@ async def handle_mission_callback(
         verification_method = mission.verification_method
         if verification_method in VERIFICATION_METHOD_TO_STATE:
             new_state = get_state_by_verification_method(mission.verification_method)
-
             await state.set_state(new_state)
             await state.update_data(
                 {
@@ -217,29 +217,24 @@ async def handle_mission_callback(
     )
 
 
-@router.message(states.WAITING_FOR_PICTURE_SUBMISSION)
-async def handle_picture_submission(message: Message, state: FSMContext):
-    if not message.photo:
-        await message.answer(
-            text_storage.PHOTO_SUBMISSION_EXPECTED,
-            reply_markup=get_cancel_state_keyboard(),
-        )
-        return
-
-    state_data = await state.get_data()
-    await state.clear()
-
-    mission_id = state_data.get("mission_id")
-    msg_id = state_data.get("msg_id")
+async def check_old_submissions(message: Message, mission_id: int, verification_method: MissionVerificationMethod) -> bool:
 
     if not mission_id:
+
+        if verification_method == MissionVerificationMethod.PHOTO:
+            await message.answer(
+                text=text_storage.CANNOT_HANDLE_SEVERAL_PHOTOS,
+            )
+            return False
+
         await message.answer(
             text=text_storage.SOMETHING_WENT_WRONG,
             reply_markup=get_go_to_main_menu_keyboard(
                 text_storage.GO_BACK_TO_MAIN_MENU
             ),
         )
-        return
+
+        return False
 
     mission = await Mission.objects.get(id=mission_id)
 
@@ -258,7 +253,7 @@ async def handle_picture_submission(message: Message, state: FSMContext):
                 ),
             )
 
-            return
+            return False
 
         elif old_submission.status == RequestStatus.PENDING:
             await message.answer(
@@ -270,14 +265,57 @@ async def handle_picture_submission(message: Message, state: FSMContext):
                 ),
             )
 
-            return
+            return False
 
         await old_submission.delete()
 
-    file_id = message.photo[-1].file_id
-    user_submission = await resend_submission(
-        message.bot, mission, message.from_user, file_id=file_id
+    return True
+
+
+async def handle_submission_util(message: Message, state: FSMContext, verification_method: MissionVerificationMethod):
+
+    state_data = await state.get_data()
+    await state.clear()
+
+    mission_id = state_data.get("mission_id")
+    msg_id = state_data.get("msg_id")
+
+    success = await check_old_submissions(message, mission_id, verification_method)
+    if not success:
+        return
+
+    mission = await Mission.objects.get(id=mission_id)
+    location = await Location.objects.get(id=mission.location_id)
+    user = await User.objects.get(id=message.from_user.id)
+
+    user_mission_submission = await UserMissionSubmission.objects.create(
+        user_id=user.id,
+        mission_id=mission.id,
     )
+
+    text = text_storage.SUBMISSION_REQUEST_TEXT.format(
+        username=user.username,
+        mission_name=mission.name,
+    )
+
+    resend_kwargs = {
+        "chat_id": location.chat_id,
+        "reply_markup": get_submission_options_keyboard(user_mission_submission.id),
+        "parse_mode": ParseMode.HTML,
+    }
+
+    if verification_method == MissionVerificationMethod.PHOTO:
+        file_id = message.photo[-1].file_id
+        await resend_submission_photo_util(message.bot, text, file_id, resend_kwargs)
+    elif verification_method == MissionVerificationMethod.VOICE or verification_method == MissionVerificationMethod.VIDEO:
+        file_id = message.voice.file_id if message.voice else message.video_note.file_id
+        await resend_submission_voice_util(message.bot, text, file_id, resend_kwargs)
+    elif verification_method == MissionVerificationMethod.TEXT:
+        text = f"{text}\n\nПользователь отправил следующий текст:\n«<b>{message.text}</b>»"
+        await resend_submission_text_util(message.bot, text, resend_kwargs)
+    elif verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+        if await check_verification_code(mission, message.text):
+            pass  # todo
 
     await message.bot.edit_message_reply_markup(
         chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
@@ -295,7 +333,67 @@ async def handle_picture_submission(message: Message, state: FSMContext):
         parse_mode=ParseMode.HTML,
     )
 
-    save_request_to_redis(user_submission.id, message.message_id)
+    save_request_to_redis(user_mission_submission.id, message.message_id)
+
+
+@router.message(states.WAITING_FOR_PICTURE_SUBMISSION)
+async def handle_picture_submission(message: Message, state: FSMContext):
+    if not message.media_group_id and not message.photo:
+        await message.answer(
+            text_storage.PHOTO_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    await handle_submission_util(message, state, MissionVerificationMethod.PHOTO)
+
+
+@router.message(states.WAITING_FOR_VOICE_SUBMISSION)
+async def handle_voice_submission(message: Message, state: FSMContext):
+    if not message.voice:
+        await message.answer(
+            text_storage.VOICE_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    await handle_submission_util(message, state, MissionVerificationMethod.VOICE)
+
+
+@router.message(states.WAITING_FOR_VIDEO_SUBMISSION)
+async def handle_video_submission(message: Message, state: FSMContext):
+    if not message.video_note:
+        await message.answer(
+            text_storage.VIDEO_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    await handle_submission_util(message, state, MissionVerificationMethod.VIDEO)
+
+
+@router.message(states.WAITING_FOR_TEXT_SUBMISSION)
+async def handle_text_submission(message: Message, state: FSMContext):
+    if not message.text or message.text.startswith('/'):
+        await message.answer(
+            text_storage.TEXT_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    await handle_submission_util(message, state, MissionVerificationMethod.TEXT)
+
+
+@router.message(states.WAITING_FOR_VERIFICATION_CODE_SUBMISSION)
+async def handle_text_submission(message: Message, state: FSMContext):
+    if not message.text or message.text.startswith('/'):
+        await message.answer(
+            text_storage.TEXT_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    await handle_submission_util(message, state, MissionVerificationMethod.VERIFICATION_CODE)
 
 
 @router.callback_query(RequestAnswerCallbackFactory.filter())
@@ -310,7 +408,10 @@ async def handle_request_answer_callback(
 
     status = RequestStatus.ACCEPTED if is_accepted else RequestStatus.DECLINED
 
-    if mission.verification_method == MissionVerificationMethod.PHOTO:
+    if mission.verification_method == MissionVerificationMethod.VIDEO:
+        await call.message.edit_reply_markup(reply_markup=None)
+        await call.message.answer(f"Статус для обращения с кружочком выше: {status.label}")
+    elif mission.verification_method in CAPTION_TYPE_VERIFICATION_METHODS:
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
         await call.message.edit_caption(caption=text, reply_markup=None)
     else:

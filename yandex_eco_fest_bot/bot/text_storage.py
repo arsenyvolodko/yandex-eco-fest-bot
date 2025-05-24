@@ -9,13 +9,17 @@ GO_TO_MAIN_MENU_SHORT = "В меню ⤵️"
 GO_BACK_TO_MAIN_MENU = "Вернуться в меню ⤵️"
 
 SOMETHING_WENT_WRONG = "Что-то пошло не так :(\nПопробуйте еще раз."
+CANNOT_HANDLE_SEVERAL_PHOTOS = "Убедитесь, что вы отправляете только одно фото, именно оно будет проверяться модератором. Последующие фото будут проигнорированы."
 
 # Locations
 LOCATIONS_MAP_TEXT = "[Locations map text]"
 
-PHOTO_SUBMISSION_EXPECTED = (
-    "Отправьте фото, на котором видно, что вы выполнили задание."
-)
+PHOTO_SUBMISSION_EXPECTED = "Отправьте фото, на котором видно, что вы выполнили задание."
+VOICE_SUBMISSION_EXPECTED = "Отправьте голосовое сообщение, в котором расскажете о выполнении задания."
+TEXT_SUBMISSION_EXPECTED = "Отправьте текстовое сообщение, в котором расскажете о выполнении задания."
+VIDEO_SUBMISSION_EXPECTED = "Отправьте видео-кружочек, на котором видно, что вы выполнили задание."
+
+
 SUBMISSION_REQUEST_TEXT = "Вам пришла новая заявка на проверку задания от @{username} в рамках эко-миссии <b>«{mission_name}»</b>"
 SUBMISSION_SUCCESSFULLY_SENT = (
     "Заявка на проверку задания успешно отправлена.\n"

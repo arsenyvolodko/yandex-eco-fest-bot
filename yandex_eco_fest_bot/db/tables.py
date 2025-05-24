@@ -87,6 +87,7 @@ class Mission(BaseTable):
     )
     location_id: Mapped[int] = mapped_column(ForeignKey("location.id"), nullable=True)
     order: Mapped[int] = mapped_column(nullable=False)
+    verification_message: Mapped[str] = mapped_column(nullable=True, default=None)
 
     location: Mapped["Location"] = relationship(
         "Location",
