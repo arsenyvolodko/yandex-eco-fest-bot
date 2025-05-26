@@ -1,9 +1,6 @@
-from collections import defaultdict
-
 from aiogram import Bot
-from aiogram.enums import ParseMode
 from aiogram.fsm.state import State
-from aiogram.types import CallbackQuery, FSInputFile, User, InputMediaPhoto
+from aiogram.types import CallbackQuery, FSInputFile
 
 from yandex_eco_fest_bot.bot import text_storage
 from yandex_eco_fest_bot.bot.enums import RequestStatus
@@ -16,10 +13,8 @@ from yandex_eco_fest_bot.bot.schemas.missions_display_schema import (
     LocationMissionsStatus,
 )
 from yandex_eco_fest_bot.bot.static import VERIFICATION_METHOD_TO_STATE
-from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_locations_menu_keyboard,
-    get_submission_options_keyboard,
 )
 from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
@@ -140,17 +135,28 @@ def get_location_info_text(location: Location) -> str:
 def get_mission_info_text(mission: Mission, status: RequestStatus | None) -> str:
     if not status:
         return f"<b>{mission.name}</b>\n\n" f"{mission.description}"
+
     if status == RequestStatus.ACCEPTED:
-        return text_storage.MISSION_ACCEPTED_INFO.format(
+        text = text_storage.MISSION_ACCEPTED_INFO
+        if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+            text = text_storage.VERIFICATION_CODE_ACCEPTED_INFO
+
+        return text.format(
             mission_name=mission.name,
             mission_score=mission.score,
             mission_description=mission.description,
         )
+
     if status == RequestStatus.DECLINED:
-        return text_storage.MISSION_DECLINED_INFO.format(
+        text = text_storage.MISSION_DECLINED_INFO
+        if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+            text = text_storage.VERIFICATION_CODE_SUBMISSION_REJECTED
+
+        return text.format(
             mission_name=mission.name,
             mission_description=mission.description,
         )
+
     if status == RequestStatus.PENDING:
         return text_storage.MISSION_PENDING_INFO.format(
             mission_name=mission.name,
@@ -184,3 +190,23 @@ def get_state_by_verification_method(
 def check_verification_code(mission: Mission, message_text: str):
     expected_text = mission.verification_message.strip().lower()
     return expected_text == message_text.strip().lower()
+
+
+async def process_verification_code_submission(mission: Mission, user_id: int, success: bool) -> str:
+    if success:
+        await UserMissionSubmission.objects.create(
+            user_id=user_id,
+            mission_id=mission.id,
+            status=RequestStatus.ACCEPTED,
+        )
+        return text_storage.SUBMISSION_ACCEPTED.format(
+            mission_name=mission.name,
+            score=mission.score,
+        )
+    else:
+        await UserMissionSubmission.objects.create(
+            user_id=user_id,
+            mission_id=mission.id,
+            status=RequestStatus.DECLINED,
+        )
+        return text_storage.VERIFICATION_CODE_SUBMISSION_REJECTED

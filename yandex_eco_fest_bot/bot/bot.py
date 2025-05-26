@@ -42,7 +42,7 @@ from yandex_eco_fest_bot.bot.utils import (
     save_request_to_redis,
     get_missions_with_score,
     get_user_achievements, resend_submission_photo_util, resend_submission_text_util, resend_submission_voice_util,
-    check_verification_code
+    check_verification_code, process_verification_code_submission
 )
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -96,10 +96,16 @@ async def handle_main_menu_callback(
     await state.clear()
 
     if callback_data.delete_message:
-        await call.message.delete()
+        try:
+            await call.message.delete()
+        except Exception as e:
+            pass
 
     if callback_data.with_delete_markup:
-        await call.message.edit_reply_markup(reply_markup=None)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception as e:
+            pass
 
     if callback_data.with_new_message:
         await call.message.answer(
@@ -195,7 +201,7 @@ async def handle_mission_callback(
         if verification_method in VERIFICATION_METHOD_TO_STATE:
             new_state = get_state_by_verification_method(mission.verification_method)
             await state.set_state(new_state)
-            await state.update_data(
+            await state.set_data(
                 {
                     "mission_id": mission.id,
                     "msg_id": call.message.message_id,
@@ -275,8 +281,6 @@ async def check_old_submissions(message: Message, mission_id: int, verification_
 async def handle_submission_util(message: Message, state: FSMContext, verification_method: MissionVerificationMethod):
 
     state_data = await state.get_data()
-    await state.clear()
-
     mission_id = state_data.get("mission_id")
     msg_id = state_data.get("msg_id")
 
@@ -287,6 +291,38 @@ async def handle_submission_util(message: Message, state: FSMContext, verificati
     mission = await Mission.objects.get(id=mission_id)
     location = await Location.objects.get(id=mission.location_id)
     user = await User.objects.get(id=message.from_user.id)
+
+    if verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+        success = check_verification_code(mission, message.text)
+        answer = await process_verification_code_submission(mission, user.id, success)
+        await message.bot.edit_message_reply_markup(
+            chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
+        )
+        if success:
+            await state.clear()
+            await message.answer(
+                text=answer,
+                reply_markup=get_go_to_main_menu_keyboard(
+                    button_text=text_storage.GREAT,
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+        else:
+            message = await message.answer(
+                text=answer,
+                reply_markup=get_go_to_main_menu_keyboard(
+                    button_text=text_storage.GO_BACK_TO_MAIN_MENU,
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+            await state.set_data(
+                {
+                    "mission_id": mission.id,
+                    "msg_id": message.message_id,
+                }
+            )
+
+        return
 
     user_mission_submission = await UserMissionSubmission.objects.create(
         user_id=user.id,
@@ -305,17 +341,17 @@ async def handle_submission_util(message: Message, state: FSMContext, verificati
     }
 
     if verification_method == MissionVerificationMethod.PHOTO:
+        await state.clear()
         file_id = message.photo[-1].file_id
         await resend_submission_photo_util(message.bot, text, file_id, resend_kwargs)
     elif verification_method == MissionVerificationMethod.VOICE or verification_method == MissionVerificationMethod.VIDEO:
+        await state.clear()
         file_id = message.voice.file_id if message.voice else message.video_note.file_id
         await resend_submission_voice_util(message.bot, text, file_id, resend_kwargs)
     elif verification_method == MissionVerificationMethod.TEXT:
+        await state.clear()
         text = f"{text}\n\nПользователь отправил следующий текст:\n«<b>{message.text}</b>»"
         await resend_submission_text_util(message.bot, text, resend_kwargs)
-    elif verification_method == MissionVerificationMethod.VERIFICATION_CODE:
-        if await check_verification_code(mission, message.text):
-            pass  # todo
 
     await message.bot.edit_message_reply_markup(
         chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
