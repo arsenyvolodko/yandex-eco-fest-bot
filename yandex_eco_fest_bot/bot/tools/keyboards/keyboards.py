@@ -2,6 +2,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from yandex_eco_fest_bot.bot import text_storage
+from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod, RequestStatus
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus, AchievementStatus
 from yandex_eco_fest_bot.bot.tools.factories import (
     LocationCallbackFactory,
@@ -10,7 +11,7 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
-    AchievementPageCallbackFactory,
+    AchievementPageCallbackFactory, NoVerificationMissionCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button import Button
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
@@ -150,8 +151,18 @@ def get_missions_keyboard(
     return builder.as_markup()
 
 
-def get_specific_mission_keyboard(mission: Mission) -> InlineKeyboardMarkup:
+def get_specific_mission_keyboard(mission: Mission, status: RequestStatus) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+
+    if not status or status == RequestStatus.DECLINED:
+
+        if mission.verification_method == MissionVerificationMethod.NO_VERIFICATION:
+            builder.button(
+                text=text_storage.I_VE_DONE_MISSION,
+                callback_data=NoVerificationMissionCallbackFactory(
+                    id=mission.id,
+                ),
+            )
 
     builder.button(
         text=text_storage.GO_BACK,

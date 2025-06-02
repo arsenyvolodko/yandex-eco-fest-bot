@@ -18,7 +18,7 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
-    AchievementPageCallbackFactory,
+    AchievementPageCallbackFactory, NoVerificationMissionCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
@@ -195,7 +195,7 @@ async def handle_mission_callback(
 
     text = get_mission_info_text(mission, status)
 
-    if not old_submission or old_submission.status == RequestStatus.DECLINED:
+    if not old_submission or status == RequestStatus.DECLINED:
 
         verification_method = mission.verification_method
         if verification_method in VERIFICATION_METHOD_TO_STATE:
@@ -208,17 +208,51 @@ async def handle_mission_callback(
                 }
             )
 
-        await call.message.edit_text(
-            text=text,
-            reply_markup=get_specific_mission_keyboard(mission),
-            parse_mode=ParseMode.HTML,
-        )
-
-        return
-
     await call.message.edit_text(
         text=text,
-        reply_markup=get_specific_mission_keyboard(mission),
+        reply_markup=get_specific_mission_keyboard(mission, status),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+@router.callback_query(NoVerificationMissionCallbackFactory.filter())
+async def handle_no_verification_mission_callback(
+    call: CallbackQuery, callback_data: NoVerificationMissionCallbackFactory
+):
+    mission = await Mission.objects.get(id=callback_data.id)
+    old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
+        mission_id=mission.id, user_id=call.from_user.id
+    ).first()
+
+    if old_submission and old_submission.status == RequestStatus.ACCEPTED:
+        await call.message.edit_text(
+            text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
+            reply_markup=get_go_to_main_menu_keyboard(
+                text_storage.GO_BACK_TO_MAIN_MENU,
+                with_new_message=True,
+                with_delete_markup=True,
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    await UserMissionSubmission.objects.create(
+        user_id=call.from_user.id,
+        mission_id=mission.id,
+        status=RequestStatus.ACCEPTED,
+    )
+
+    await call.message.edit_text(
+        text=text_storage.NO_VERIFICATION_MISSION_ACCEPTED_INFO.format(
+            mission_name=mission.name,
+            mission_score=mission.score,
+            mission_description=mission.description,
+        ),
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text=text_storage.GREAT,
+            with_new_message=True,
+            with_delete_markup=True,
+        ),
         parse_mode=ParseMode.HTML,
     )
 
@@ -278,6 +312,39 @@ async def check_old_submissions(message: Message, mission_id: int, verification_
     return True
 
 
+async def handle_verification_code_mission(user: User, mission: Mission, message: Message, msg_id: int, state: FSMContext):
+    success = check_verification_code(mission, message.text)
+    answer = await process_verification_code_submission(mission, user.id, success)
+    await message.bot.edit_message_reply_markup(
+        chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
+    )
+    if success:
+        await state.clear()
+        await message.answer(
+            text=answer,
+            reply_markup=get_go_to_main_menu_keyboard(
+                button_text=text_storage.GREAT,
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        message = await message.answer(
+            text=answer,
+            reply_markup=get_go_to_main_menu_keyboard(
+                button_text=text_storage.GO_BACK_TO_MAIN_MENU,
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        await state.set_data(
+            {
+                "mission_id": mission.id,
+                "msg_id": message.message_id,
+            }
+        )
+
+    return
+
+
 async def handle_submission_util(message: Message, state: FSMContext, verification_method: MissionVerificationMethod):
 
     state_data = await state.get_data()
@@ -293,35 +360,7 @@ async def handle_submission_util(message: Message, state: FSMContext, verificati
     user = await User.objects.get(id=message.from_user.id)
 
     if verification_method == MissionVerificationMethod.VERIFICATION_CODE:
-        success = check_verification_code(mission, message.text)
-        answer = await process_verification_code_submission(mission, user.id, success)
-        await message.bot.edit_message_reply_markup(
-            chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
-        )
-        if success:
-            await state.clear()
-            await message.answer(
-                text=answer,
-                reply_markup=get_go_to_main_menu_keyboard(
-                    button_text=text_storage.GREAT,
-                ),
-                parse_mode=ParseMode.HTML,
-            )
-        else:
-            message = await message.answer(
-                text=answer,
-                reply_markup=get_go_to_main_menu_keyboard(
-                    button_text=text_storage.GO_BACK_TO_MAIN_MENU,
-                ),
-                parse_mode=ParseMode.HTML,
-            )
-            await state.set_data(
-                {
-                    "mission_id": mission.id,
-                    "msg_id": message.message_id,
-                }
-            )
-
+        await handle_verification_code_mission(user, mission, message, msg_id, state)
         return
 
     user_mission_submission = await UserMissionSubmission.objects.create(

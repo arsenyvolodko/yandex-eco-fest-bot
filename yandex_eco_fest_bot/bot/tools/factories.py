@@ -22,6 +22,12 @@ class MissionCallbackFactory(CallbackData, prefix="mission_callback_factory"):
     id: int
 
 
+class NoVerificationMissionCallbackFactory(
+    CallbackData, prefix="no_verification_mission_callback_factory"
+):
+    id: int
+
+
 class RequestAnswerCallbackFactory(
     CallbackData, prefix="request_answer_callback_factory"
 ):

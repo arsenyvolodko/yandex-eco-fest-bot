@@ -63,6 +63,16 @@ MISSION_PENDING_INFO = (
     "{mission_description}"
 )
 
+I_VE_DONE_MISSION = "Я выполнил(а) задание ✅"
+
+NO_VERIFICATION_MISSION_ACCEPTED_INFO = (
+    "<b>{mission_name}</b>\n\n"
+    "Отличная работа! 🎉\n"
+    "Вам начислено {mission_score} 🌱кредитов.\n"
+    "Продолжайте в том же духе!\n\n"
+    "{mission_description}"
+)
+
 # todo add moderator name to info text
 MISSION_DECLINED_INFO = (
     "<b>{mission_name}</b>\n\n"

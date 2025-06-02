@@ -8,3 +8,5 @@ class MissionVerificationMethod(Enum):
     VIDEO = "video"
     VERIFICATION_CODE = "verification_code"
     NO_VERIFICATION = "no_verification"
+    CHECK_LIST = "check_list"
+    QUEST = "quest"
