@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from yandex_eco_fest_bot.bot import text_storage
+from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus, MissionVerificationMethod
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus
 from yandex_eco_fest_bot.bot.static import CAPTION_TYPE_VERIFICATION_METHODS
@@ -18,7 +18,10 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
-    AchievementPageCallbackFactory, NoVerificationMissionCallbackFactory,
+    AchievementPageCallbackFactory,
+    NoVerificationMissionCallbackFactory,
+    CheckListOptionCallbackFactory,
+    CheckListIsReadyCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
@@ -31,7 +34,9 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_cancel_state_keyboard,
     get_achievements_keyboard,
     get_achievement_keyboard,
-    get_go_to_achievements_keyboard, get_submission_options_keyboard,
+    get_go_to_achievements_keyboard,
+    get_submission_options_keyboard,
+    get_check_list_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     send_locations_with_image,
@@ -41,8 +46,12 @@ from yandex_eco_fest_bot.bot.utils import (
     VERIFICATION_METHOD_TO_STATE,
     save_request_to_redis,
     get_missions_with_score,
-    get_user_achievements, resend_submission_photo_util, resend_submission_text_util, resend_submission_voice_util,
-    check_verification_code, process_verification_code_submission
+    get_user_achievements,
+    resend_submission_photo_util,
+    resend_submission_text_util,
+    resend_submission_voice_util,
+    check_verification_code,
+    process_verification_code_submission,
 )
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -96,6 +105,7 @@ async def handle_main_menu_callback(
     await state.clear()
 
     if callback_data.delete_message:
+        # todo
         try:
             await call.message.delete()
         except Exception as e:
@@ -193,7 +203,7 @@ async def handle_mission_callback(
     ).first()
     status = old_submission.status if old_submission else None
 
-    text = get_mission_info_text(mission, status)
+    text = get_mission_info_text(mission, old_submission)
 
     if not old_submission or status == RequestStatus.DECLINED:
 
@@ -208,9 +218,10 @@ async def handle_mission_callback(
                 }
             )
 
+    reply_markup = await get_specific_mission_keyboard(mission, status)
     await call.message.edit_text(
         text=text,
-        reply_markup=get_specific_mission_keyboard(mission, status),
+        reply_markup=reply_markup,
         parse_mode=ParseMode.HTML,
     )
 
@@ -243,7 +254,7 @@ async def handle_no_verification_mission_callback(
     )
 
     await call.message.edit_text(
-        text=text_storage.NO_VERIFICATION_MISSION_ACCEPTED_INFO.format(
+        text=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
             mission_name=mission.name,
             mission_score=mission.score,
             mission_description=mission.description,
@@ -257,7 +268,88 @@ async def handle_no_verification_mission_callback(
     )
 
 
-async def check_old_submissions(message: Message, mission_id: int, verification_method: MissionVerificationMethod) -> bool:
+@router.callback_query(CheckListOptionCallbackFactory.filter())
+async def handle_checklist_mission_callback(
+    call: CallbackQuery, callback_data: CheckListOptionCallbackFactory
+):
+    reply_markup = call.message.reply_markup
+    inline_keyboard = reply_markup.inline_keyboard
+    is_completed_list = []
+
+    for i in inline_keyboard:
+        text = i[0].text
+        is_completed = text[-1] == "✅"
+        is_completed_list.append(is_completed)
+
+    is_completed_list[callback_data.question_num] = not callback_data.is_completed
+
+    new_reply_markup = await get_check_list_keyboard(
+        static.CHECK_LIST_QUESTIONS, is_completed_list, callback_data.mission_id
+    )
+
+    mission = await Mission.objects.get(id=callback_data.mission_id)
+    text = get_mission_info_text(mission, None)
+    await call.message.edit_text(
+        text=text,
+        reply_markup=new_reply_markup,
+        parse_mode=ParseMode.HTML,
+    )
+
+
+@router.callback_query(CheckListIsReadyCallbackFactory.filter())
+async def evaluate_check_list_score_callback(
+    call: CallbackQuery, callback_data: CheckListIsReadyCallbackFactory
+):
+
+    mission = await Mission.objects.get(id=callback_data.mission_id)
+
+    old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
+        mission_id=mission.id, user_id=call.from_user.id
+    ).first()
+
+    if old_submission and old_submission.status == RequestStatus.ACCEPTED:
+        await call.message.edit_text(
+            text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
+            reply_markup=get_go_to_main_menu_keyboard(
+                text_storage.GO_BACK_TO_MAIN_MENU,
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    reply_markup = call.message.reply_markup
+    inline_keyboard = reply_markup.inline_keyboard
+    is_completed_list = []
+
+    for i in inline_keyboard:
+        text = i[0].text
+        is_completed = text[-1] == "✅"
+        is_completed_list.append(is_completed)
+
+    score = is_completed_list.count(True) * static.CHECK_LIST_POINT_SCORE
+    await UserMissionSubmission.objects.create(
+        user_id=call.from_user.id,
+        mission_id=mission.id,
+        status=RequestStatus.ACCEPTED,
+        extra_score=score,
+    )
+
+    await call.message.edit_text(
+        text=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
+            mission_name=mission.name,
+            mission_score=score,
+            mission_description=mission.description,
+        ),
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text=text_storage.GREAT,
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def check_old_submissions(
+    message: Message, mission_id: int, verification_method: MissionVerificationMethod
+) -> bool:
 
     if not mission_id:
 
@@ -312,7 +404,9 @@ async def check_old_submissions(message: Message, mission_id: int, verification_
     return True
 
 
-async def handle_verification_code_mission(user: User, mission: Mission, message: Message, msg_id: int, state: FSMContext):
+async def handle_verification_code_mission(
+    user: User, mission: Mission, message: Message, msg_id: int, state: FSMContext
+):
     success = check_verification_code(mission, message.text)
     answer = await process_verification_code_submission(mission, user.id, success)
     await message.bot.edit_message_reply_markup(
@@ -345,7 +439,9 @@ async def handle_verification_code_mission(user: User, mission: Mission, message
     return
 
 
-async def handle_submission_util(message: Message, state: FSMContext, verification_method: MissionVerificationMethod):
+async def handle_submission_util(
+    message: Message, state: FSMContext, verification_method: MissionVerificationMethod
+):
 
     state_data = await state.get_data()
     mission_id = state_data.get("mission_id")
@@ -383,13 +479,18 @@ async def handle_submission_util(message: Message, state: FSMContext, verificati
         await state.clear()
         file_id = message.photo[-1].file_id
         await resend_submission_photo_util(message.bot, text, file_id, resend_kwargs)
-    elif verification_method == MissionVerificationMethod.VOICE or verification_method == MissionVerificationMethod.VIDEO:
+    elif (
+        verification_method == MissionVerificationMethod.VOICE
+        or verification_method == MissionVerificationMethod.VIDEO
+    ):
         await state.clear()
         file_id = message.voice.file_id if message.voice else message.video_note.file_id
         await resend_submission_voice_util(message.bot, text, file_id, resend_kwargs)
     elif verification_method == MissionVerificationMethod.TEXT:
         await state.clear()
-        text = f"{text}\n\nПользователь отправил следующий текст:\n«<b>{message.text}</b>»"
+        text = (
+            f"{text}\n\nПользователь отправил следующий текст:\n«<b>{message.text}</b>»"
+        )
         await resend_submission_text_util(message.bot, text, resend_kwargs)
 
     await message.bot.edit_message_reply_markup(
@@ -449,7 +550,7 @@ async def handle_video_submission(message: Message, state: FSMContext):
 
 @router.message(states.WAITING_FOR_TEXT_SUBMISSION)
 async def handle_text_submission(message: Message, state: FSMContext):
-    if not message.text or message.text.startswith('/'):
+    if not message.text or message.text.startswith("/"):
         await message.answer(
             text_storage.TEXT_SUBMISSION_EXPECTED,
             reply_markup=get_cancel_state_keyboard(),
@@ -461,14 +562,16 @@ async def handle_text_submission(message: Message, state: FSMContext):
 
 @router.message(states.WAITING_FOR_VERIFICATION_CODE_SUBMISSION)
 async def handle_text_submission(message: Message, state: FSMContext):
-    if not message.text or message.text.startswith('/'):
+    if not message.text or message.text.startswith("/"):
         await message.answer(
             text_storage.TEXT_SUBMISSION_EXPECTED,
             reply_markup=get_cancel_state_keyboard(),
         )
         return
 
-    await handle_submission_util(message, state, MissionVerificationMethod.VERIFICATION_CODE)
+    await handle_submission_util(
+        message, state, MissionVerificationMethod.VERIFICATION_CODE
+    )
 
 
 @router.callback_query(RequestAnswerCallbackFactory.filter())
@@ -485,7 +588,9 @@ async def handle_request_answer_callback(
 
     if mission.verification_method == MissionVerificationMethod.VIDEO:
         await call.message.edit_reply_markup(reply_markup=None)
-        await call.message.answer(f"Статус для обращения с кружочком выше: {status.label}")
+        await call.message.answer(
+            f"Статус для обращения с кружочком выше: {status.label}"
+        )
     elif mission.verification_method in CAPTION_TYPE_VERIFICATION_METHODS:
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
         await call.message.edit_caption(caption=text, reply_markup=None)

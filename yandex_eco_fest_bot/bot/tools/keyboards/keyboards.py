@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from yandex_eco_fest_bot.bot import text_storage
+from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod, RequestStatus
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus, AchievementStatus
 from yandex_eco_fest_bot.bot.tools.factories import (
@@ -11,7 +11,10 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
-    AchievementPageCallbackFactory, NoVerificationMissionCallbackFactory,
+    AchievementPageCallbackFactory,
+    NoVerificationMissionCallbackFactory,
+    CheckListOptionCallbackFactory,
+    CheckListIsReadyCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button import Button
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
@@ -151,7 +154,9 @@ def get_missions_keyboard(
     return builder.as_markup()
 
 
-def get_specific_mission_keyboard(mission: Mission, status: RequestStatus) -> InlineKeyboardMarkup:
+async def get_specific_mission_keyboard(
+    mission: Mission, status: RequestStatus
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     if not status or status == RequestStatus.DECLINED:
@@ -163,6 +168,14 @@ def get_specific_mission_keyboard(mission: Mission, status: RequestStatus) -> In
                     id=mission.id,
                 ),
             )
+
+        elif mission.verification_method == MissionVerificationMethod.CHECK_LIST:
+            check_list_keyboard = await get_check_list_keyboard(
+                static.CHECK_LIST_QUESTIONS,
+                [False] * len(static.CHECK_LIST_QUESTIONS),
+                mission.id,
+            )
+            return check_list_keyboard
 
     builder.button(
         text=text_storage.GO_BACK,
@@ -207,6 +220,44 @@ def get_submission_options_keyboard(request_id: int) -> InlineKeyboardMarkup:
         callback_data=RequestAnswerCallbackFactory(
             request_id=request_id,
             is_accepted=False,
+        ),
+    )
+
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+async def get_check_list_keyboard(
+    questions: list[str], is_completed: list[bool], mission_id: int
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for i, question in enumerate(questions):
+        emoji = "✅" if is_completed[i] else "☑️"
+        text = f"{question} {emoji}"
+
+        builder.button(
+            text=text,
+            callback_data=CheckListOptionCallbackFactory(
+                mission_id=mission_id,
+                question_num=i,
+                is_completed=is_completed[i],
+            ),
+        )
+
+    builder.button(
+        text=text_storage.I_VE_DONE_CHECK_LIST,
+        callback_data=CheckListIsReadyCallbackFactory(
+            mission_id=mission_id,
+        ),
+    )
+
+    mission = await Mission.objects.get(id=mission_id)
+
+    builder.button(
+        text=text_storage.GO_BACK,
+        callback_data=LocationCallbackFactory(
+            id=mission.location_id,
         ),
     )
 

@@ -59,9 +59,7 @@ async def resend_submission_photo_util(
     )
 
 
-async def resend_submission_text_util(
-    bot: Bot, text: str, resend_kwargs: dict
-):
+async def resend_submission_text_util(bot: Bot, text: str, resend_kwargs: dict):
     await bot.send_message(
         text=text,
         **resend_kwargs,
@@ -132,18 +130,27 @@ def get_location_info_text(location: Location) -> str:
     return f"<b>{location.name}</b>" f"{location.description}"
 
 
-def get_mission_info_text(mission: Mission, status: RequestStatus | None) -> str:
-    if not status:
+def get_mission_info_text(
+    mission: Mission, old_submission: UserMissionSubmission | None
+) -> str:
+    if not old_submission:
         return f"<b>{mission.name}</b>\n\n" f"{mission.description}"
+
+    status = old_submission.status
 
     if status == RequestStatus.ACCEPTED:
         text = text_storage.MISSION_ACCEPTED_INFO
         if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
             text = text_storage.VERIFICATION_CODE_ACCEPTED_INFO
+        elif (
+            mission.verification_method == MissionVerificationMethod.NO_VERIFICATION
+            or mission.verification_method == MissionVerificationMethod.CHECK_LIST
+        ):
+            text = text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO
 
         return text.format(
             mission_name=mission.name,
-            mission_score=mission.score,
+            mission_score=mission.score + old_submission.extra_score,
             mission_description=mission.description,
         )
 
@@ -168,7 +175,9 @@ async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
     achievements = await Achievement.objects.all()
     user_achievements = await UserAchievement.objects.filter(user_id=user_id).all()
 
-    user_achievements_set = set([user_achievement.achievement for user_achievement in user_achievements])
+    user_achievements_set = set(
+        [user_achievement.achievement for user_achievement in user_achievements]
+    )
 
     res_achievements: list[AchievementStatus] = [
         AchievementStatus(
@@ -192,7 +201,9 @@ def check_verification_code(mission: Mission, message_text: str):
     return expected_text == message_text.strip().lower()
 
 
-async def process_verification_code_submission(mission: Mission, user_id: int, success: bool) -> str:
+async def process_verification_code_submission(
+    mission: Mission, user_id: int, success: bool
+) -> str:
     if success:
         await UserMissionSubmission.objects.create(
             user_id=user_id,

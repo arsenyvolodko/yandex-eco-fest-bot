@@ -43,3 +43,17 @@ class AchievementPageCallbackFactory(
     CallbackData, prefix="achievement_page_callback_factory"
 ):
     page: int
+
+
+class CheckListOptionCallbackFactory(
+    CallbackData, prefix="check_list_callback_factory"
+):
+    mission_id: int
+    question_num: int
+    is_completed: bool
+
+
+class CheckListIsReadyCallbackFactory(
+    CallbackData, prefix="check_list_is_ready_callback_factory"
+):
+    mission_id: int

@@ -121,6 +121,7 @@ class UserMissionSubmission(BaseTable):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    extra_score: Mapped[int] = mapped_column(nullable=False, default=0)
 
     user: Mapped["User"] = relationship(User, lazy="selectin")
     mission: Mapped["Mission"] = relationship(Mission, lazy="selectin")
