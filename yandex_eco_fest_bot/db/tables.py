@@ -88,6 +88,11 @@ class Mission(BaseTable):
     location_id: Mapped[int] = mapped_column(ForeignKey("location.id"), nullable=True)
     order: Mapped[int] = mapped_column(nullable=False)
     verification_message: Mapped[str] = mapped_column(nullable=True, default=None)
+    extra_text = mapped_column(
+        Text(),
+        nullable=True,
+        default=None,
+    )
 
     location: Mapped["Location"] = relationship(
         "Location",
@@ -122,6 +127,9 @@ class UserMissionSubmission(BaseTable):
         DateTime, default=datetime.utcnow, nullable=False
     )
     extra_score: Mapped[int] = mapped_column(nullable=False, default=0)
+    picture_is_liked: Mapped[bool] = mapped_column(
+        nullable=False, default=False
+    )
 
     user: Mapped["User"] = relationship(User, lazy="selectin")
     mission: Mapped["Mission"] = relationship(Mission, lazy="selectin")

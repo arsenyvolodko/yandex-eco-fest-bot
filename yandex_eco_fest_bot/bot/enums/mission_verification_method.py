@@ -9,4 +9,4 @@ class MissionVerificationMethod(Enum):
     VERIFICATION_CODE = "verification_code"
     NO_VERIFICATION = "no_verification"
     CHECK_LIST = "check_list"
-    QUEST = "quest"
+    NO_VERIFICATION_DIALOG = "dialog"

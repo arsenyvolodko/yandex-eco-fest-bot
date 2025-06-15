@@ -28,6 +28,18 @@ class NoVerificationMissionCallbackFactory(
     id: int
 
 
+class NoVerificationWithDialogCallbackFactory(
+    CallbackData, prefix="no_verification_with_dialog_callback_factory"
+):
+    id: int
+
+
+class LikePictureCallbackFactory(
+    CallbackData, prefix="like_picture_callback_factory"
+):
+    user_mission_submission_id: int
+
+
 class RequestAnswerCallbackFactory(
     CallbackData, prefix="request_answer_callback_factory"
 ):

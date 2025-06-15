@@ -14,7 +14,7 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     AchievementPageCallbackFactory,
     NoVerificationMissionCallbackFactory,
     CheckListOptionCallbackFactory,
-    CheckListIsReadyCallbackFactory,
+    CheckListIsReadyCallbackFactory, NoVerificationWithDialogCallbackFactory, LikePictureCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button import Button
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
@@ -155,7 +155,7 @@ def get_missions_keyboard(
 
 
 async def get_specific_mission_keyboard(
-    mission: Mission, status: RequestStatus
+    mission: Mission, status: RequestStatus | None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
@@ -165,6 +165,14 @@ async def get_specific_mission_keyboard(
             builder.button(
                 text=text_storage.I_VE_DONE_MISSION,
                 callback_data=NoVerificationMissionCallbackFactory(
+                    id=mission.id,
+                ),
+            )
+
+        elif mission.verification_method == MissionVerificationMethod.NO_VERIFICATION_DIALOG:
+            builder.button(
+                text=text_storage.I_VE_DONE_MISSION_WITH_DIALOG,
+                callback_data=NoVerificationWithDialogCallbackFactory(
                     id=mission.id,
                 ),
             )
@@ -258,6 +266,20 @@ async def get_check_list_keyboard(
         text=text_storage.GO_BACK,
         callback_data=LocationCallbackFactory(
             id=mission.location_id,
+        ),
+    )
+
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_picture_rating_keyboard(user_mission_submission_id) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text=text_storage.LIKE_PICTURE,
+        callback_data=LikePictureCallbackFactory(
+            user_mission_submission_id=user_mission_submission_id,
         ),
     )
 

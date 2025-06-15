@@ -21,7 +21,7 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     AchievementPageCallbackFactory,
     NoVerificationMissionCallbackFactory,
     CheckListOptionCallbackFactory,
-    CheckListIsReadyCallbackFactory,
+    CheckListIsReadyCallbackFactory, NoVerificationWithDialogCallbackFactory, LikePictureCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
@@ -36,12 +36,11 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_achievement_keyboard,
     get_go_to_achievements_keyboard,
     get_submission_options_keyboard,
-    get_check_list_keyboard,
+    get_check_list_keyboard, get_picture_rating_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     send_locations_with_image,
     get_location_info_text,
-    get_mission_info_text,
     get_state_by_verification_method,
     VERIFICATION_METHOD_TO_STATE,
     save_request_to_redis,
@@ -51,7 +50,7 @@ from yandex_eco_fest_bot.bot.utils import (
     resend_submission_text_util,
     resend_submission_voice_util,
     check_verification_code,
-    process_verification_code_submission,
+    process_verification_code_submission, get_mission_task_text,
 )
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -203,7 +202,8 @@ async def handle_mission_callback(
     ).first()
     status = old_submission.status if old_submission else None
 
-    text = get_mission_info_text(mission, old_submission)
+    # text = get_mission_info_text(mission, old_submission)
+    text = await get_mission_task_text(mission, old_submission)
 
     if not old_submission or status == RequestStatus.DECLINED:
 
@@ -288,11 +288,44 @@ async def handle_checklist_mission_callback(
     )
 
     mission = await Mission.objects.get(id=callback_data.mission_id)
-    text = get_mission_info_text(mission, None)
+    # text = get_mission_info_text(mission, None)
+    text = await get_mission_task_text(mission, None)
     await call.message.edit_text(
         text=text,
         reply_markup=new_reply_markup,
         parse_mode=ParseMode.HTML,
+    )
+
+
+@router.callback_query(NoVerificationWithDialogCallbackFactory.filter())
+async def handle_mission_with_dialog_callback(
+    call: CallbackQuery, callback_data: NoVerificationWithDialogCallbackFactory, state: FSMContext
+):
+    mission = await Mission.objects.get(id=callback_data.id)
+    old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
+        mission_id=mission.id, user_id=call.from_user.id
+    ).first()
+
+    if old_submission and old_submission.status == RequestStatus.ACCEPTED:
+        await call.message.edit_text(
+            text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
+            reply_markup=get_go_to_main_menu_keyboard(
+                text_storage.GO_BACK_TO_MAIN_MENU,
+                with_new_message=True,
+                with_delete_markup=True,
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    await state.clear()
+    await state.set_state(states.WAITING_FOR_ROBOT_PHOTO)
+    await state.set_data(
+        {"mission_id": mission.id}
+    )
+    await call.message.edit_text(
+        text=text_storage.SEND_ROBOT_PIC,
+        reply_markup=None
     )
 
 
@@ -478,7 +511,7 @@ async def handle_submission_util(
     if verification_method == MissionVerificationMethod.PHOTO:
         await state.clear()
         file_id = message.photo[-1].file_id
-        await resend_submission_photo_util(message.bot, text, file_id, resend_kwargs)
+        await resend_submission_photo_util(message.bot, text, file_id, **resend_kwargs)
     elif (
         verification_method == MissionVerificationMethod.VOICE
         or verification_method == MissionVerificationMethod.VIDEO
@@ -510,6 +543,62 @@ async def handle_submission_util(
     )
 
     save_request_to_redis(user_mission_submission.id, message.message_id)
+
+
+@router.message(states.WAITING_FOR_ROBOT_PHOTO)
+async def handle_robot_picture_submission(message: Message, state: FSMContext):
+    if not message.media_group_id and not message.photo:
+        await message.answer(
+            text_storage.PHOTO_SUBMISSION_EXPECTED,
+            reply_markup=get_cancel_state_keyboard(),
+        )
+        return
+
+    state_data = await state.get_data()
+    mission_id: int | None = state_data.get("mission_id", None)
+    await state.clear()
+
+    if not mission_id:
+        await message.answer(
+            text=text_storage.SOMETHING_WENT_WRONG,
+            reply_markup=get_go_to_main_menu_keyboard(
+                text_storage.GO_BACK_TO_MAIN_MENU,
+                with_new_message=True
+            ),
+        )
+        return
+
+    ok = await check_old_submissions(message, mission_id, MissionVerificationMethod.PHOTO)
+    if not ok:
+        return
+
+    mission = await Mission.objects.get(id=mission_id)
+
+    await UserMissionSubmission.objects.create(
+        user_id=message.from_user.id,
+        mission_id=mission_id,
+        status=RequestStatus.ACCEPTED,
+    )
+
+    file_id = message.photo[-1].file_id
+
+    await resend_submission_photo_util(
+        message.bot, None, file_id, chat_id=static.KIDS_ROBOTS_CHAT_ID,
+    )
+
+    text = text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
+        mission_name=mission.name, mission_score=mission.score
+    )
+
+    await message.answer(
+        text=text,
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text=text_storage.GREAT,
+            with_new_message=True,
+            with_delete_markup=True,
+        ),
+        parse_mode=ParseMode.HTML,
+    )
 
 
 @router.message(states.WAITING_FOR_PICTURE_SUBMISSION)
@@ -584,6 +673,8 @@ async def handle_request_answer_callback(
     user_mission_submission = await UserMissionSubmission.objects.get(id=request_id)
     mission = await Mission.objects.get(id=user_mission_submission.mission_id)
 
+    # todo: check if user submission is already accepted or declined
+
     status = RequestStatus.ACCEPTED if is_accepted else RequestStatus.DECLINED
 
     if mission.verification_method == MissionVerificationMethod.VIDEO:
@@ -594,6 +685,11 @@ async def handle_request_answer_callback(
     elif mission.verification_method in CAPTION_TYPE_VERIFICATION_METHODS:
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
         await call.message.edit_caption(caption=text, reply_markup=None)
+        if mission.verification_method == MissionVerificationMethod.PHOTO and status == RequestStatus.ACCEPTED:
+            # await send_picture_for_rating(call.bot, user_mission_submission.id, call.message.photo[-1].file_id)
+            await resend_submission_photo_util(
+                call.bot, text_storage.RATE_PICTURE_IF_LIKED, call.message.photo[-1].file_id, chat_id=static.COMMON_PICTURES_CHAT_ID, reply_markup=get_picture_rating_keyboard(user_mission_submission.id)
+            )
     else:
         text = f"{call.message.text}\n\nСтатус: {status.label}"
         await call.message.edit_text(text=text, reply_markup=None)
@@ -656,6 +752,23 @@ async def handle_request_answer_callback(
     kwargs["reply_markup"] = reply_markup
 
     await call.bot.send_message(**kwargs)
+
+
+@router.callback_query(LikePictureCallbackFactory.filter())
+async def handle_like_picture_callback(
+    call: CallbackQuery, callback_data: LikePictureCallbackFactory
+):
+    user_mission_submission_id = callback_data.user_mission_submission_id
+    user_mission_submission: UserMissionSubmission = await UserMissionSubmission.objects.get(id=user_mission_submission_id)
+    user_mission_submission.picture_is_liked = True
+    await user_mission_submission.save()
+
+    # todo check achievement with pictures here
+
+    await call.message.edit_caption(
+        caption=text_storage.PICTURE_HAS_BEEN_LIKED,
+        reply_markup=None
+    )
 
 
 # Personal progres

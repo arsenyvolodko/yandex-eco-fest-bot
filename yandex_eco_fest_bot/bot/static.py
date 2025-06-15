@@ -1,7 +1,7 @@
 from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod
 from yandex_eco_fest_bot.bot.tools import states
 
-CHECK_LIST_POINT_SCORE = 1
+CHECK_LIST_POINT_SCORE = 2
 
 VERIFICATION_METHOD_TO_STATE = {
     MissionVerificationMethod.PHOTO: states.WAITING_FOR_PICTURE_SUBMISSION,
@@ -27,3 +27,17 @@ CHECK_LIST_QUESTIONS = [
     "Я покрасил(а) лавочку",
     "Я покрасил(а) урну",
 ]
+
+COMMON_PICTURES_CHAT_ID = -1002672226725  # https://t.me/+MI4JcU5xwSc4NTYy
+KIDS_ROBOTS_CHAT_ID = -1002682842161  # https://t.me/+9sNd3OtsEgAzMzFi
+
+VERIFICATION_METHOD_TEXT = {
+    MissionVerificationMethod.PHOTO: "Для решения задания отправьте фото, на котором видно, что вы выполнили задание.",
+    MissionVerificationMethod.VOICE: "Для решения задания отправьте голосовое сообщение, в котором расскажете о выполнении задания.",
+    MissionVerificationMethod.TEXT: "Для решения задания отправьте текстовое сообщение, в котором расскажете о выполнении задания.",
+    MissionVerificationMethod.VIDEO: "Для решения задания отправьте видео-кружочек, на котором видно, что вы выполнили задание.",
+    MissionVerificationMethod.VERIFICATION_CODE: "Для решения задания отправьте код, который вы получили от модератора.",
+    # MissionVerificationMethod.NO_VERIFICATION: "Когда выполнишь задание нажми ",
+    MissionVerificationMethod.CHECK_LIST: "Для решения задания отметьте выполненные пункты в чек-листе.",
+    # MissionVerificationMethod.NO_VERIFICATION_DIALOG: "",
+}

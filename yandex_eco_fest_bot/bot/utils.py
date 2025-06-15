@@ -2,7 +2,7 @@ from aiogram import Bot
 from aiogram.fsm.state import State
 from aiogram.types import CallbackQuery, FSInputFile
 
-from yandex_eco_fest_bot.bot import text_storage
+from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus
 from yandex_eco_fest_bot.bot.enums.mission_verification_method import (
     MissionVerificationMethod,
@@ -14,8 +14,7 @@ from yandex_eco_fest_bot.bot.schemas.missions_display_schema import (
 )
 from yandex_eco_fest_bot.bot.static import VERIFICATION_METHOD_TO_STATE
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
-    get_locations_menu_keyboard,
-)
+    get_locations_menu_keyboard, )
 from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -50,12 +49,12 @@ async def send_locations_with_image(call: CallbackQuery, locations: list[Locatio
 
 
 async def resend_submission_photo_util(
-    bot: Bot, text: str, file_id: str, resend_kwargs: dict
+    bot: Bot, text: str | None, file_id: str, **kwargs
 ):
     await bot.send_photo(
         photo=file_id,
         caption=text,
-        **resend_kwargs,
+        **kwargs,
     )
 
 
@@ -128,47 +127,47 @@ def save_request_to_redis(request_id: int, message_id: int):
 
 def get_location_info_text(location: Location) -> str:
     return f"<b>{location.name}</b>" f"{location.description}"
-
-
-def get_mission_info_text(
-    mission: Mission, old_submission: UserMissionSubmission | None
-) -> str:
-    if not old_submission:
-        return f"<b>{mission.name}</b>\n\n" f"{mission.description}"
-
-    status = old_submission.status
-
-    if status == RequestStatus.ACCEPTED:
-        text = text_storage.MISSION_ACCEPTED_INFO
-        if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
-            text = text_storage.VERIFICATION_CODE_ACCEPTED_INFO
-        elif (
-            mission.verification_method == MissionVerificationMethod.NO_VERIFICATION
-            or mission.verification_method == MissionVerificationMethod.CHECK_LIST
-        ):
-            text = text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO
-
-        return text.format(
-            mission_name=mission.name,
-            mission_score=mission.score + old_submission.extra_score,
-            mission_description=mission.description,
-        )
-
-    if status == RequestStatus.DECLINED:
-        text = text_storage.MISSION_DECLINED_INFO
-        if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
-            text = text_storage.VERIFICATION_CODE_SUBMISSION_REJECTED
-
-        return text.format(
-            mission_name=mission.name,
-            mission_description=mission.description,
-        )
-
-    if status == RequestStatus.PENDING:
-        return text_storage.MISSION_PENDING_INFO.format(
-            mission_name=mission.name,
-            mission_description=mission.description,
-        )
+#
+#
+# def get_mission_info_text(
+#     mission: Mission, old_submission: UserMissionSubmission | None
+# ) -> str:
+#     if not old_submission:
+#         return f"<b>{mission.name}</b>\n\n" f"{mission.description}"
+#
+#     status = old_submission.status
+#
+#     if status == RequestStatus.ACCEPTED:
+#         text = text_storage.MISSION_ACCEPTED_INFO
+#         if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+#             text = text_storage.VERIFICATION_CODE_ACCEPTED_INFO
+#         elif (
+#             mission.verification_method == MissionVerificationMethod.NO_VERIFICATION
+#             or mission.verification_method == MissionVerificationMethod.CHECK_LIST
+#         ):
+#             text = text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO
+#
+#         return text.format(
+#             mission_name=mission.name,
+#             mission_score=mission.score + old_submission.extra_score,
+#             mission_description=mission.description,
+#         )
+#
+#     if status == RequestStatus.DECLINED:
+#         text = text_storage.MISSION_DECLINED_INFO
+#         if mission.verification_method == MissionVerificationMethod.VERIFICATION_CODE:
+#             text = text_storage.VERIFICATION_CODE_SUBMISSION_REJECTED
+#
+#         return text.format(
+#             mission_name=mission.name,
+#             mission_description=mission.description,
+#         )
+#
+#     if status == RequestStatus.PENDING:
+#         return text_storage.MISSION_PENDING_INFO.format(
+#             mission_name=mission.name,
+#             mission_description=mission.description,
+#         )
 
 
 async def get_user_achievements(user_id: int) -> list[AchievementStatus]:
@@ -210,9 +209,9 @@ async def process_verification_code_submission(
             mission_id=mission.id,
             status=RequestStatus.ACCEPTED,
         )
-        return text_storage.SUBMISSION_ACCEPTED.format(
+        return text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
             mission_name=mission.name,
-            score=mission.score,
+            mission_score=mission.score,
         )
     else:
         await UserMissionSubmission.objects.create(
@@ -221,3 +220,37 @@ async def process_verification_code_submission(
             status=RequestStatus.DECLINED,
         )
         return text_storage.VERIFICATION_CODE_SUBMISSION_REJECTED
+
+
+async def get_mission_task_text(
+    mission: Mission, old_submission: UserMissionSubmission | None
+) -> str:
+    text = f"<b>{mission.name}</b>\n\n"
+
+    if old_submission:
+        text += f"Статус прохождения эко-миссии: <b>{old_submission.status.label}</b>\n\n"
+        if old_submission.status == RequestStatus.ACCEPTED:
+            text += (f"<b>Вы набрали {mission.score + old_submission.extra_score} 🌱кредитов за выполнение эко-миссии.</b>\n"
+                     f"Вы не можете пройти ее повторно.\n\n")
+        else:
+            if old_submission.status == RequestStatus.DECLINED:
+                text += "Вы можете попробовать выполнить задание еще раз.\n"
+
+    if not old_submission or old_submission.status != RequestStatus.ACCEPTED:
+        if mission.verification_method == MissionVerificationMethod.CHECK_LIST:
+            mission_max_score = len(static.CHECK_LIST_QUESTIONS) * static.CHECK_LIST_POINT_SCORE
+        else:
+            mission_max_score = mission.score
+
+        text += f"Максимальное количество 🌱кредитов за выполнение задания - {mission_max_score}\n\n"
+
+    text += "Твое задание в рамках эко-миссии:\n"
+    text += f"{mission.description}\n\n"
+
+    if mission.verification_method in static.VERIFICATION_METHOD_TEXT and (not old_submission or old_submission.status == RequestStatus.DECLINED):
+        text += f"{static.VERIFICATION_METHOD_TEXT[mission.verification_method]}\n\n"
+
+    if mission.extra_text and (not old_submission or old_submission.status == RequestStatus.DECLINED):
+        text += f"{mission.extra_text}"
+
+    return text
