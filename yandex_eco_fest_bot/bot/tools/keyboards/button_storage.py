@@ -13,6 +13,7 @@ class AutoNameButtonMeta(type):
 class ButtonsStorage(metaclass=AutoNameButtonMeta):
 
     AFTER_START_BUTTON = Button("Даа")
+    GET_START_ACHIEVEMENT = Button("Поехали!")
 
     # Base menu buttons
     LOCATIONS_MAP = Button("📍Карта зон")

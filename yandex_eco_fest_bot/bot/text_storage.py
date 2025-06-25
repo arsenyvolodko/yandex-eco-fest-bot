@@ -79,6 +79,8 @@ PERSONAL_SCORE_TEXT = (
     "У тебя <b>{score}</b> 🌱кредитов\n\n" "Выполняй миссии, получай бейджи.."
 )
 
+GET_ACHIEVEMENTS_TEXT = "<b>{achievement_name}</b> выдан!"
+EXTRA_INTRO_ACHIEVEMENT_TEXT = "Первый бейдж уже в коллекции. Выполняй эко-миссии — новые карточки будут появляться сами.\n\nСледи за ростом в «Мой прогресс»."
 ACHIEVEMENTS_TEXT = "Ниже - бейджи, ✅ - выполнено, ☑️- не выполнено"
 ACHIEVEMENT_TEXT = "<b>{achievement_name}</b>\n\n{achievement_description}"
 ACHIEVEMENT_RECEIVED_TEXT = "<b>{achievement_name}</b>\n\nТы уже получил этот бейдж! 🎉\n\n{achievement_description}"

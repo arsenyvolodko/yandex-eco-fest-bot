@@ -15,8 +15,10 @@ from yandex_eco_fest_bot.bot.schemas.missions_display_schema import (
     LocationMissionsStatus,
 )
 from yandex_eco_fest_bot.bot.static import VERIFICATION_METHOD_TO_STATE
+from yandex_eco_fest_bot.bot.tools.keyboards import button_storage
+from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
-    get_locations_menu_keyboard, )
+    get_locations_menu_keyboard, get_one_button_keyboard, get_go_to_main_menu_keyboard, )
 from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -78,6 +80,24 @@ def get_location_media_url(location: Location):
 
 def get_achievement_media_url(achievement: Achievement):
     return f"{static.ACHIEVEMENTS_MEDIA_DIR}/{achievement.id}.png"
+
+
+async def send_start_achievement(bot, chat_id, achievement: Achievement):
+    media_url = get_achievement_media_url(achievement)
+    text = text_storage.GET_ACHIEVEMENTS_TEXT.format(achievement_name=achievement.name)
+    text += f"\n\n{text_storage.EXTRA_INTRO_ACHIEVEMENT_TEXT}"
+
+    await send_photo_message(
+        bot=bot,
+        chat_id=chat_id,
+        photo_url=media_url,
+        caption=text,
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text="Отлично!",
+            with_new_message=True,
+            with_delete_markup=True,
+        )
+    )
 
 
 async def send_locations_with_image(call: CallbackQuery, locations: list[Location]):

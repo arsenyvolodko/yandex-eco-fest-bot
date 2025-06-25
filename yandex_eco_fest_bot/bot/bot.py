@@ -59,7 +59,7 @@ from yandex_eco_fest_bot.bot.utils import (
     edit_photo_message,
     send_photo_message,
     get_location_media_url,
-    get_achievement_media_url,
+    get_achievement_media_url, send_start_achievement,
 )
 from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
@@ -97,8 +97,21 @@ async def handle_start_command(message: Message):
 async def handle_after_start_callback(call: CallbackQuery):
     await call.message.edit_text(
         text_storage.AFTER_START_TEXT.format(name=call.from_user.first_name),
-        reply_markup=get_go_to_main_menu_keyboard(button_text="Поехали!", with_delete_markup=True, with_new_message=True),
+        reply_markup=get_one_button_keyboard(ButtonsStorage.GET_START_ACHIEVEMENT),
     )
+
+
+@router.callback_query(F.data == ButtonsStorage.GET_START_ACHIEVEMENT.callback)
+async def handle_get_first_achievement_callback(call: CallbackQuery):
+    await call.message.edit_reply_markup(
+        reply_markup=None
+    )
+    achievement = await Achievement.objects.filter(id=1).get()
+    await UserAchievement.objects.get_or_create(
+        user_id=call.from_user.id,
+        achievement_id=achievement.id,
+    )
+    await send_start_achievement(call.bot, call.from_user.id, achievement)
 
 
 @router.callback_query(MainMenuCallbackFactory.filter())
