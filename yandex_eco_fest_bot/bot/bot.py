@@ -358,6 +358,7 @@ async def handle_mission_with_dialog_callback(
     callback_data: NoVerificationWithDialogCallbackFactory,
     state: FSMContext,
 ):
+    print("AAAAAA")
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
         mission_id=mission.id, user_id=call.from_user.id
@@ -378,7 +379,12 @@ async def handle_mission_with_dialog_callback(
     await state.clear()
     await state.set_state(states.WAITING_FOR_ROBOT_PHOTO)
     await state.set_data({"mission_id": mission.id})
-    await call.message.edit_text(text=text_storage.SEND_ROBOT_PIC, reply_markup=None)
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_location_media_url(mission.location),
+        caption=text_storage.SEND_ROBOT_PIC,
+    )
 
 
 @router.callback_query(CheckListIsReadyCallbackFactory.filter())

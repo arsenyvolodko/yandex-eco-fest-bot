@@ -167,6 +167,7 @@ async def get_specific_mission_keyboard(
             )
 
         elif mission.verification_method == MissionVerificationMethod.NO_VERIFICATION_DIALOG:
+            print("GJWBLWRJV")
             builder.button(
                 text=text_storage.I_VE_DONE_MISSION_WITH_DIALOG,
                 callback_data=NoVerificationWithDialogCallbackFactory(
