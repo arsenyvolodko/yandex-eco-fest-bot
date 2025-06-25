@@ -4,7 +4,7 @@ from aiogram import Dispatcher, Router, F
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 
 from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus, MissionVerificationMethod
@@ -21,7 +21,9 @@ from yandex_eco_fest_bot.bot.tools.factories import (
     AchievementPageCallbackFactory,
     NoVerificationMissionCallbackFactory,
     CheckListOptionCallbackFactory,
-    CheckListIsReadyCallbackFactory, NoVerificationWithDialogCallbackFactory, LikePictureCallbackFactory,
+    CheckListIsReadyCallbackFactory,
+    NoVerificationWithDialogCallbackFactory,
+    LikePictureCallbackFactory,
 )
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
@@ -36,7 +38,8 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_achievement_keyboard,
     get_go_to_achievements_keyboard,
     get_submission_options_keyboard,
-    get_check_list_keyboard, get_picture_rating_keyboard,
+    get_check_list_keyboard,
+    get_picture_rating_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     send_locations_with_image,
@@ -50,8 +53,15 @@ from yandex_eco_fest_bot.bot.utils import (
     resend_submission_text_util,
     resend_submission_voice_util,
     check_verification_code,
-    process_verification_code_submission, get_mission_task_text,
+    process_verification_code_submission,
+    get_mission_task_text,
+    get_user_missions_score,
+    edit_photo_message,
+    send_photo_message,
+    get_location_media_url,
+    get_achievement_media_url,
 )
+from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
     User,
@@ -87,7 +97,7 @@ async def handle_start_command(message: Message):
 async def handle_after_start_callback(call: CallbackQuery):
     await call.message.edit_text(
         text_storage.AFTER_START_TEXT.format(name=call.from_user.first_name),
-        reply_markup=get_go_to_main_menu_keyboard(button_text="Поехали!"),
+        reply_markup=get_go_to_main_menu_keyboard(button_text="Поехали!", with_delete_markup=True, with_new_message=True),
     )
 
 
@@ -104,35 +114,44 @@ async def handle_main_menu_callback(
     await state.clear()
 
     if callback_data.delete_message:
-        # todo
+        # todo: safe delete func
         try:
             await call.message.delete()
-        except Exception as e:
+        except Exception:
             pass
 
     if callback_data.with_delete_markup:
         try:
             await call.message.edit_reply_markup(reply_markup=None)
-        except Exception as e:
+        except Exception:
             pass
 
     if callback_data.with_new_message:
-        await call.message.answer(
-            text=text_storage.MAIN_MENU_TEXT,
+        await send_photo_message(
+            call.bot,
+            call.message.chat.id,
+            photo_url=static.MAIN_MENU_MEDIA_URL,
+            caption=text_storage.MAIN_MENU_TEXT,
             reply_markup=get_main_menu_keyboard(),
         )
         return
 
-    await call.message.edit_text(
-        text=text_storage.MAIN_MENU_TEXT,
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        static.MAIN_MENU_MEDIA_URL,
+        caption=text_storage.MAIN_MENU_TEXT,
         reply_markup=get_main_menu_keyboard(),
     )
 
 
 @router.message(Command("menu"))
 async def handle_main_menu_command(message: Message):
-    await message.answer(
-        text=text_storage.MAIN_MENU_TEXT,
+    await send_photo_message(
+        message.bot,
+        message.chat.id,
+        photo_url=static.MAIN_MENU_MEDIA_URL,
+        caption=text_storage.MAIN_MENU_TEXT,
         reply_markup=get_main_menu_keyboard(),
     )
 
@@ -142,20 +161,31 @@ async def handle_main_menu_command(message: Message):
 
 @router.callback_query(F.data == ButtonsStorage.LOCATIONS_MAP.callback)
 async def handle_location_map_callback(call: CallbackQuery):
-    await call.message.delete()
     locations = await Location.objects.filter(parent=None).all()
-    await send_locations_with_image(call, locations)
+    reply_markup = get_locations_menu_keyboard(locations)
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=static.MAP_MEDIA_URL,
+        caption=text_storage.LOCATIONS_MAP_TEXT,
+        reply_markup=reply_markup,
+    )
 
 
 @router.callback_query(LocationPageCallbackFactory.filter())
 async def handle_location_page_callback(
     call: CallbackQuery, callback_data: LocationPageCallbackFactory
 ):
-    locations = await Location.objects.filter(parent=None).all()
-    await call.message.edit_reply_markup(
+    locations = await Location.objects.all()
+    print("AAA", callback_data.page)
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        photo_url=static.MAP_MEDIA_URL,
+        caption=call.message.text,
         reply_markup=get_locations_menu_keyboard(
             locations, page_number=callback_data.page
-        )
+        ),
     )
 
 
@@ -168,26 +198,29 @@ async def handle_location_callback(
     location = await Location.objects.get(id=callback_data.id)
     text = get_location_info_text(location)
 
-    if location.is_group:
-        locations = await Location.objects.filter(parent=location).all()
-        reply_markup = get_locations_menu_keyboard(
-            locations, back_to_locations_parent=location
-        )
-    else:
+    missions_status_score_schema: LocationMissionsStatus = (
+        await get_missions_with_score(user_id=call.from_user.id, location=location)
+    )
+    reply_markup = get_missions_keyboard(missions_status_score_schema)
 
-        missions_status_score_schema: LocationMissionsStatus = (
-            await get_missions_with_score(user_id=call.from_user.id, location=location)
-        )
-        reply_markup = get_missions_keyboard(missions_status_score_schema)
+    # if not callback_data.with_new_message:
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        get_location_media_url(location),
+        caption=text,
+        reply_markup=reply_markup,
+    )
+    # return
 
-    kwargs = {"text": text, "reply_markup": reply_markup, "parse_mode": ParseMode.HTML}
-
-    if not callback_data.with_new_message:
-        await call.message.edit_text(**kwargs)
-        return
-
-    await call.message.delete()
-    await call.message.answer(**kwargs)
+    # await call.message.delete()
+    # await send_photo_message(
+    #     call.bot,
+    #     call.message.chat.id,
+    #     get_location_media_url(location),
+    #     caption=text,
+    #     reply_markup=reply_markup,
+    # )
 
 
 @router.callback_query(MissionCallbackFactory.filter())
@@ -202,7 +235,6 @@ async def handle_mission_callback(
     ).first()
     status = old_submission.status if old_submission else None
 
-    # text = get_mission_info_text(mission, old_submission)
     text = await get_mission_task_text(mission, old_submission)
 
     if not old_submission or status == RequestStatus.DECLINED:
@@ -219,10 +251,13 @@ async def handle_mission_callback(
             )
 
     reply_markup = await get_specific_mission_keyboard(mission, status)
-    await call.message.edit_text(
-        text=text,
+
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_location_media_url(mission.location),
+        caption=text,
         reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML,
     )
 
 
@@ -290,16 +325,25 @@ async def handle_checklist_mission_callback(
     mission = await Mission.objects.get(id=callback_data.mission_id)
     # text = get_mission_info_text(mission, None)
     text = await get_mission_task_text(mission, None)
-    await call.message.edit_text(
-        text=text,
+    # await call.message.edit_text(
+    #     text=text,
+    #     reply_markup=new_reply_markup,
+    #     parse_mode=ParseMode.HTML,
+    # )
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_location_media_url(mission.location),
+        caption=text,
         reply_markup=new_reply_markup,
-        parse_mode=ParseMode.HTML,
     )
 
 
 @router.callback_query(NoVerificationWithDialogCallbackFactory.filter())
 async def handle_mission_with_dialog_callback(
-    call: CallbackQuery, callback_data: NoVerificationWithDialogCallbackFactory, state: FSMContext
+    call: CallbackQuery,
+    callback_data: NoVerificationWithDialogCallbackFactory,
+    state: FSMContext,
 ):
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
@@ -320,20 +364,14 @@ async def handle_mission_with_dialog_callback(
 
     await state.clear()
     await state.set_state(states.WAITING_FOR_ROBOT_PHOTO)
-    await state.set_data(
-        {"mission_id": mission.id}
-    )
-    await call.message.edit_text(
-        text=text_storage.SEND_ROBOT_PIC,
-        reply_markup=None
-    )
+    await state.set_data({"mission_id": mission.id})
+    await call.message.edit_text(text=text_storage.SEND_ROBOT_PIC, reply_markup=None)
 
 
 @router.callback_query(CheckListIsReadyCallbackFactory.filter())
 async def evaluate_check_list_score_callback(
     call: CallbackQuery, callback_data: CheckListIsReadyCallbackFactory
 ):
-
     mission = await Mission.objects.get(id=callback_data.mission_id)
 
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
@@ -367,8 +405,11 @@ async def evaluate_check_list_score_callback(
         extra_score=score,
     )
 
-    await call.message.edit_text(
-        text=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_location_media_url(mission.location),
+        caption=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
             mission_name=mission.name,
             mission_score=score,
             mission_description=mission.description,
@@ -376,14 +417,12 @@ async def evaluate_check_list_score_callback(
         reply_markup=get_go_to_main_menu_keyboard(
             button_text=text_storage.GREAT,
         ),
-        parse_mode=ParseMode.HTML,
     )
 
 
 async def check_old_submissions(
     message: Message, mission_id: int, verification_method: MissionVerificationMethod
 ) -> bool:
-
     if not mission_id:
 
         if verification_method == MissionVerificationMethod.PHOTO:
@@ -475,7 +514,6 @@ async def handle_verification_code_mission(
 async def handle_submission_util(
     message: Message, state: FSMContext, verification_method: MissionVerificationMethod
 ):
-
     state_data = await state.get_data()
     mission_id = state_data.get("mission_id")
     msg_id = state_data.get("msg_id")
@@ -562,13 +600,14 @@ async def handle_robot_picture_submission(message: Message, state: FSMContext):
         await message.answer(
             text=text_storage.SOMETHING_WENT_WRONG,
             reply_markup=get_go_to_main_menu_keyboard(
-                text_storage.GO_BACK_TO_MAIN_MENU,
-                with_new_message=True
+                text_storage.GO_BACK_TO_MAIN_MENU, with_new_message=True
             ),
         )
         return
 
-    ok = await check_old_submissions(message, mission_id, MissionVerificationMethod.PHOTO)
+    ok = await check_old_submissions(
+        message, mission_id, MissionVerificationMethod.PHOTO
+    )
     if not ok:
         return
 
@@ -583,7 +622,10 @@ async def handle_robot_picture_submission(message: Message, state: FSMContext):
     file_id = message.photo[-1].file_id
 
     await resend_submission_photo_util(
-        message.bot, None, file_id, chat_id=static.KIDS_ROBOTS_CHAT_ID,
+        message.bot,
+        None,
+        file_id,
+        chat_id=static.KIDS_ROBOTS_CHAT_ID,
     )
 
     text = text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
@@ -685,10 +727,17 @@ async def handle_request_answer_callback(
     elif mission.verification_method in CAPTION_TYPE_VERIFICATION_METHODS:
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
         await call.message.edit_caption(caption=text, reply_markup=None)
-        if mission.verification_method == MissionVerificationMethod.PHOTO and status == RequestStatus.ACCEPTED:
+        if (
+            mission.verification_method == MissionVerificationMethod.PHOTO
+            and status == RequestStatus.ACCEPTED
+        ):
             # await send_picture_for_rating(call.bot, user_mission_submission.id, call.message.photo[-1].file_id)
             await resend_submission_photo_util(
-                call.bot, text_storage.RATE_PICTURE_IF_LIKED, call.message.photo[-1].file_id, chat_id=static.COMMON_PICTURES_CHAT_ID, reply_markup=get_picture_rating_keyboard(user_mission_submission.id)
+                call.bot,
+                text_storage.RATE_PICTURE_IF_LIKED,
+                call.message.photo[-1].file_id,
+                chat_id=static.COMMON_PICTURES_CHAT_ID,
+                reply_markup=get_picture_rating_keyboard(user_mission_submission.id),
             )
     else:
         text = f"{call.message.text}\n\nСтатус: {status.label}"
@@ -759,15 +808,16 @@ async def handle_like_picture_callback(
     call: CallbackQuery, callback_data: LikePictureCallbackFactory
 ):
     user_mission_submission_id = callback_data.user_mission_submission_id
-    user_mission_submission: UserMissionSubmission = await UserMissionSubmission.objects.get(id=user_mission_submission_id)
+    user_mission_submission: UserMissionSubmission = (
+        await UserMissionSubmission.objects.get(id=user_mission_submission_id)
+    )
     user_mission_submission.picture_is_liked = True
     await user_mission_submission.save()
 
     # todo check achievement with pictures here
 
     await call.message.edit_caption(
-        caption=text_storage.PICTURE_HAS_BEEN_LIKED,
-        reply_markup=None
+        caption=text_storage.PICTURE_HAS_BEEN_LIKED, reply_markup=None
     )
 
 
@@ -779,22 +829,23 @@ async def handle_my_progres_callback(call: CallbackQuery):
     user_score = await UserMissionSubmission.objects.filter(
         user_id=call.from_user.id, status=RequestStatus.ACCEPTED
     ).all()
-    missions_score = sum([submission.mission.score for submission in user_score])
+    missions_score = sum([submission.mission.score + submission.extra_score for submission in user_score])
 
-    await call.message.edit_text(
-        text=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score),
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        photo_url=static.PERSONAL_WORK_MEDIA_URL,
+        caption=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score),
         reply_markup=get_go_to_achievements_keyboard(),
-        parse_mode=ParseMode.HTML,
     )
 
 
 @router.callback_query(F.data == ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback)
 async def handle_my_progres_callback(call: CallbackQuery):
-
     user_achievements = await get_user_achievements(call.from_user.id)
 
-    await call.message.edit_text(
-        text=text_storage.ACHIEVEMENTS_TEXT,
+    await call.message.edit_caption(
+        caption=text_storage.ACHIEVEMENTS_TEXT,
         reply_markup=get_achievements_keyboard(user_achievements),
         parse_mode=ParseMode.HTML,
     )
@@ -814,15 +865,17 @@ async def handle_achievement_callback(
         text_storage.ACHIEVEMENT_TEXT
         if not user_achievement
         else text_storage.ACHIEVEMENT_RECEIVED_TEXT
+    ).format(
+        achievement_name=achievement.name,
+        achievement_description=achievement.description,
     )
 
-    await call.message.edit_text(
-        text=text.format(
-            achievement_name=achievement.name,
-            achievement_description=achievement.description,
-        ),
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_achievement_media_url(achievement),
         reply_markup=get_achievement_keyboard(achievement),
-        parse_mode=ParseMode.HTML,
+        caption=text,
     )
 
 
@@ -830,18 +883,18 @@ async def handle_achievement_callback(
 async def handle_achievement_page_callback(
     call: CallbackQuery, callback_data: AchievementPageCallbackFactory
 ):
-    user_score = await UserMissionSubmission.objects.filter(
-        user_id=call.from_user.id, status=RequestStatus.ACCEPTED
-    ).all()
-    missions_score = sum([submission.mission.score for submission in user_score])
+    user_id = call.from_user.id
+    missions_score = await get_user_missions_score(user_id=user_id)
+    user_achievements = await get_user_achievements(user_id)
 
-    user_achievements = await get_user_achievements(call.from_user.id)
-    await call.message.edit_text(
-        text=text_storage.ACHIEVEMENTS_TEXT.format(score=missions_score),
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=static.PERSONAL_WORK_MEDIA_URL,
+        caption=text_storage.ACHIEVEMENTS_TEXT.format(score=missions_score),
         reply_markup=get_achievements_keyboard(
             user_achievements, page_num=callback_data.page
         ),
-        parse_mode=ParseMode.HTML,
     )
 
 
@@ -854,10 +907,12 @@ async def handle_my_progres_callback(call: CallbackQuery):
         status=RequestStatus.ACCEPTED
     ).all()
     missions_score = sum([submission.mission.score for submission in user_score])
-    await call.message.edit_text(
-        text=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        photo_url=static.TEAM_WORK_MEDIA_URL,
+        caption=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
         reply_markup=get_go_to_main_menu_keyboard(
             button_text=text_storage.GO_BACK_TO_MAIN_MENU
         ),
-        parse_mode=ParseMode.HTML,
     )

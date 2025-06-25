@@ -4,10 +4,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).parent.parent.parent
-MEDIA_DIR = BASE_DIR / "media"
 
 load_dotenv(BASE_DIR / ".env")
 
+LOCAL_MEDIA_DIR = BASE_DIR / "media"
+MEDIA_DIR = os.environ.get("MEDIA_DIR")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 # Database

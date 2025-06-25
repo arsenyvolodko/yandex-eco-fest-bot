@@ -1,6 +1,5 @@
-from yandex_eco_fest_bot.bot.enums import RequestStatus
 from yandex_eco_fest_bot.bot.schemas.missions_display_schema import MissionStatus
-from yandex_eco_fest_bot.db.tables import Location, Mission
+from yandex_eco_fest_bot.db.tables import Location
 
 LOCATIONS_PER_PAGE = 6
 

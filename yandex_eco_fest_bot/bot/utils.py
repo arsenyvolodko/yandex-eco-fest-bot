@@ -1,6 +1,8 @@
 from aiogram import Bot
+from aiogram.enums import ParseMode
 from aiogram.fsm.state import State
-from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.types import CallbackQuery, FSInputFile, Message
+from aiogram.types.input_media_photo import InputMediaPhoto
 
 from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus
@@ -22,8 +24,60 @@ from yandex_eco_fest_bot.db.tables import (
     Mission,
     UserMissionSubmission,
     Achievement,
-    UserAchievement,
+    UserAchievement, User,
 )
+
+
+async def edit_photo_message(
+    bot: Bot, message: Message, photo_url: str, caption: str, **kwargs
+):
+    file_id = r.get(photo_url)
+    file_id = None
+    media = file_id or photo_url
+
+    if media == static.MAIN_MENU_MEDIA_URL:
+        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main.png")
+
+    msg = await bot.edit_message_media(
+        media=InputMediaPhoto(media=media, caption=caption, parse_mode=ParseMode.HTML),
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        **kwargs,
+    )
+
+    if not file_id:
+        r.set(photo_url, value=msg.photo[-1].file_id)
+
+
+async def send_photo_message(
+    bot: Bot, chat_id: int, photo_url: str, caption: str, **kwargs
+):
+    file_id = r.get(photo_url)
+    # file_id = None
+    photo = file_id or photo_url
+
+    if photo == static.MAIN_MENU_MEDIA_URL:
+        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main.png")
+
+    msg = await bot.send_photo(
+        chat_id=chat_id,
+        photo=photo,
+        caption=caption,
+        parse_mode=ParseMode.HTML,
+        **kwargs,
+    )
+
+    if not file_id:
+        r.set(photo_url, value=msg.photo[-1].file_id)
+
+
+def get_location_media_url(location: Location):
+    print(f"{static.LOCATIONS_MEDIA_DIR}/{location.id}.png")
+    return f"{static.LOCATIONS_MEDIA_DIR}/{location.id}.png"
+
+
+def get_achievement_media_url(achievement: Achievement):
+    return f"{static.ACHIEVEMENTS_MEDIA_DIR}/{achievement.id}.png"
 
 
 async def send_locations_with_image(call: CallbackQuery, locations: list[Location]):
@@ -126,7 +180,7 @@ def save_request_to_redis(request_id: int, message_id: int):
 
 
 def get_location_info_text(location: Location) -> str:
-    return f"<b>{location.name}</b>" f"{location.description}"
+    return f"<b>{location.name}</b>\n\n{location.description}"
 #
 #
 # def get_mission_info_text(
@@ -254,3 +308,72 @@ async def get_mission_task_text(
         text += f"{mission.extra_text}"
 
     return text
+
+
+# Achievements related functions
+
+
+async def get_user_missions_score(user_id: int) -> int:
+    user_submissions = await UserMissionSubmission.objects.filter(user_id=user_id, status=RequestStatus.ACCEPTED).all()
+    score = 0
+
+    for submission in user_submissions:
+        # if submission.status == RequestStatus.ACCEPTED:
+        score += submission.mission.score + submission.extra_score
+
+    return score
+
+
+async def check_credits_achievements(user_id: int, user_score: int):
+    scores = [50, 100, 500]
+
+    for ind, score in enumerate(scores, start=1):
+        if user_score >= score:
+            await UserAchievement.objects.get_or_create(
+                user_id=user_id, achievement_id=ind
+            )
+
+
+async def check_any_mission_achievement(user_id: int, accepted_submissions: list[UserMissionSubmission]):
+    location_ids = set()
+    for submission in accepted_submissions:
+        location_ids.add(submission.mission.location_id)
+
+    location_ids -= {static.ROBOLAB_KIDS_LOCATION_ID}
+
+    if len(location_ids) == static.LOCATIONS_TOTAL_COUNT:
+        await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=static.ANY_MISSION_FROM_ALL_LOCATIONS_ACHIEVEMENT_ID
+        )
+
+
+async def check_fix_it_pro_achievement(user_id: int, accepted_submissions: list[UserMissionSubmission]):
+    mission_ids = {submission.mission_id for submission in accepted_submissions}
+
+    if static.REPAIR_CAFE_MISSION_ID in mission_ids and static.UPCYCLING_MISSION_ID in mission_ids:
+        await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=static.FIX_IT_PRO_ACHIEVEMENT_ID
+        )
+
+
+async def check_achievement_updates(user_id: int):
+    user = User.objects.get(id=user_id)
+
+    accepted_submissions = await UserMissionSubmission.objects.filter(
+        user_id=user_id, status=RequestStatus.ACCEPTED
+    ).all()
+
+    user_score = await get_user_missions_score(user_id)
+
+    # «Зелёный старт» 🚀, «Сила сотни» 💯, «Eco Legend» 🏆 (1-3)
+    await check_credits_achievements(user_id, user_score)
+
+    # «Тур по зонам» 🗺 (4 - ANY_MISSION_FROM_ALL_LOCATIONS_ACHIEVEMENT_ID)
+    await check_any_mission_achievement(user_id, accepted_submissions)
+
+    # recycler ??
+
+    # «Fix-It Pro» 🔧 (6 - FIX_IT_PRO_ACHIEVEMENT_ID, REPAIR_CAFE_MISSION_ID, UPCYCLING_MISSION_ID)
+
+
+

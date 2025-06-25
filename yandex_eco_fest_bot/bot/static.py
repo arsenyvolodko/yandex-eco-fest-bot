@@ -1,5 +1,6 @@
 from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod
 from yandex_eco_fest_bot.bot.tools import states
+from yandex_eco_fest_bot.core.config import MEDIA_DIR
 
 CHECK_LIST_POINT_SCORE = 2
 
@@ -28,6 +29,13 @@ CHECK_LIST_QUESTIONS = [
     "Я покрасил(а) урну",
 ]
 
+LOCATIONS_MEDIA_DIR = f"{MEDIA_DIR}/locations"
+ACHIEVEMENTS_MEDIA_DIR = f"{MEDIA_DIR}/achievements"
+PERSONAL_WORK_MEDIA_URL = f"{MEDIA_DIR}/personal_work.png"
+TEAM_WORK_MEDIA_URL = f"{MEDIA_DIR}/team_work.png"
+MAP_MEDIA_URL = f"{MEDIA_DIR}/map.png"
+MAIN_MENU_MEDIA_URL = f"{MEDIA_DIR}/main.png"
+
 COMMON_PICTURES_CHAT_ID = -1002672226725  # https://t.me/+MI4JcU5xwSc4NTYy
 KIDS_ROBOTS_CHAT_ID = -1002682842161  # https://t.me/+9sNd3OtsEgAzMzFi
 
@@ -41,3 +49,12 @@ VERIFICATION_METHOD_TEXT = {
     MissionVerificationMethod.CHECK_LIST: "Для решения задания отметьте выполненные пункты в чек-листе.",
     # MissionVerificationMethod.NO_VERIFICATION_DIALOG: "",
 }
+
+LOCATIONS_TOTAL_COUNT = 13
+ROBOLAB_KIDS_LOCATION_ID = 11
+REPAIR_CAFE_MISSION_ID = 19
+UPCYCLING_MISSION_ID = 13
+
+ANY_MISSION_FROM_ALL_LOCATIONS_ACHIEVEMENT_ID = 4
+
+FIX_IT_PRO_ACHIEVEMENT_ID = 6

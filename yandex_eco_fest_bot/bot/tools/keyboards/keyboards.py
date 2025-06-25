@@ -62,7 +62,7 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
         [ButtonsStorage.LOCATIONS_MAP.get_button()],
         [ButtonsStorage.MY_PROGRES.get_button()],
         [ButtonsStorage.TEAM_PROGRES.get_button()],
-        [ButtonsStorage.HELP.get_button()],
+        # [ButtonsStorage.HELP.get_button()],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
@@ -105,10 +105,7 @@ def get_locations_menu_keyboard(
     else:
         builder.button(
             text=text_storage.GO_TO_MAIN_MENU_SHORT,
-            callback_data=MainMenuCallbackFactory(
-                with_new_message=True,
-                delete_message=True,
-            ),
+            callback_data=MainMenuCallbackFactory(),
         )
 
     if page_number < len(locations) // LOCATIONS_PER_PAGE + 1:
@@ -189,7 +186,6 @@ async def get_specific_mission_keyboard(
         text=text_storage.GO_BACK,
         callback_data=LocationCallbackFactory(
             id=mission.location_id,
-            with_new_message=False,
         ),
     )
 
