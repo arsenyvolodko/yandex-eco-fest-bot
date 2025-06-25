@@ -61,16 +61,29 @@ async def send_photo_message(
     if photo == static.MAIN_MENU_MEDIA_URL:
         photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main.png")
 
-    msg = await bot.send_photo(
-        chat_id=chat_id,
-        photo=photo,
-        caption=caption,
-        parse_mode=ParseMode.HTML,
-        **kwargs,
-    )
-
-    if not file_id:
-        r.set(photo_url, value=msg.photo[-1].file_id)
+    try:
+        msg = await bot.send_photo(
+            chat_id=chat_id,
+            photo=photo,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            **kwargs,
+        )
+        if not file_id:
+            r.set(photo_url, value=msg.photo[-1].file_id)
+    except Exception as e:
+        try:
+            msg = await bot.send_photo(
+                chat_id=chat_id,
+                photo=photo_url,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                **kwargs,
+            )
+            if not file_id:
+                r.set(photo_url, value=msg.photo[-1].file_id)
+        except Exception as e:
+            pass
 
 
 def get_location_media_url(location: Location):
@@ -333,51 +346,136 @@ async def get_mission_task_text(
 # Achievements related functions
 
 
+async def send_achievement(bot, chat_id, achievement: Achievement):
+    media_url = get_achievement_media_url(achievement)
+    text = text_storage.GET_ACHIEVEMENTS_TEXT.format(achievement_name=achievement.name)
+
+    await send_photo_message(
+        bot=bot,
+        chat_id=chat_id,
+        photo_url=media_url,
+        caption=text,
+        reply_markup=get_one_button_keyboard(
+            ButtonsStorage.HIDE_MESSAGE
+        )
+    )
+
+
 async def get_user_missions_score(user_id: int) -> int:
     user_submissions = await UserMissionSubmission.objects.filter(user_id=user_id, status=RequestStatus.ACCEPTED).all()
     score = 0
 
     for submission in user_submissions:
-        # if submission.status == RequestStatus.ACCEPTED:
         score += submission.mission.score + submission.extra_score
 
     return score
 
 
-async def check_credits_achievements(user_id: int, user_score: int):
+async def check_credits_achievements(bot, user_id: int, user_score: int):
     scores = [50, 100, 500]
 
-    for ind, score in enumerate(scores, start=1):
+    for ind, score in enumerate(scores, start=2):
         if user_score >= score:
-            await UserAchievement.objects.get_or_create(
+            user_achievement, created = await UserAchievement.objects.get_or_create(
                 user_id=user_id, achievement_id=ind
             )
+            achievement = await Achievement.objects.get(id=ind)
+            if created:
+                await send_achievement(
+                    bot, user_id, achievement
+                )
 
 
-async def check_any_mission_achievement(user_id: int, accepted_submissions: list[UserMissionSubmission]):
-    location_ids = set()
-    for submission in accepted_submissions:
-        location_ids.add(submission.mission.location_id)
-
+async def check_any_mission_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id: int):
+    location_ids = {submission.mission.location_id for submission in accepted_submissions}
     location_ids -= {static.ROBOLAB_KIDS_LOCATION_ID}
 
-    if len(location_ids) == static.LOCATIONS_TOTAL_COUNT:
-        await UserAchievement.objects.get_or_create(
-            user_id=user_id, achievement_id=static.ANY_MISSION_FROM_ALL_LOCATIONS_ACHIEVEMENT_ID
+    LOCATIONS_TOTAL_COUNT_WITH_MISSIONS = 12
+
+    print(f"Location IDs: {location_ids}, Total Count: {LOCATIONS_TOTAL_COUNT_WITH_MISSIONS}")
+    if len(location_ids) == LOCATIONS_TOTAL_COUNT_WITH_MISSIONS - 1:
+        user_achievement, created = await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=achievement_id
         )
+        if created:
+            achievement = await Achievement.objects.get(id=achievement_id)
+            await send_achievement(bot, user_id, achievement)
 
 
-async def check_fix_it_pro_achievement(user_id: int, accepted_submissions: list[UserMissionSubmission]):
+async def check_recycler_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id):
+    RECYCLER_MISSION_ID = 4
+    mission_ids = {submission.mission_id for submission in accepted_submissions}
+    if RECYCLER_MISSION_ID in mission_ids:
+        user_achievement, created = await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=achievement_id
+        )
+        if created:
+            achievement = await Achievement.objects.get(id=achievement_id)
+            await send_achievement(bot, user_id, achievement)
+
+
+async def check_fix_it_pro_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id):
     mission_ids = {submission.mission_id for submission in accepted_submissions}
 
-    if static.REPAIR_CAFE_MISSION_ID in mission_ids and static.UPCYCLING_MISSION_ID in mission_ids:
-        await UserAchievement.objects.get_or_create(
-            user_id=user_id, achievement_id=static.FIX_IT_PRO_ACHIEVEMENT_ID
+    UPCYCLE_ACHIEVEMENT_ID = 10
+    REPAIR_CAFE_MISSION_ID = 12
+
+    if REPAIR_CAFE_MISSION_ID in mission_ids and UPCYCLE_ACHIEVEMENT_ID in mission_ids:
+        user_achievement, created = await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=achievement_id
         )
+        if created:
+            achievement = await Achievement.objects.get(id=achievement_id)
+            await send_achievement(bot, user_id, achievement)
 
 
-async def check_achievement_updates(user_id: int):
-    user = User.objects.get(id=user_id)
+async def check_digital_detoxer_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id: int):
+    mission_ids = {submission.mission_id for submission in accepted_submissions}
+
+    CHECK_LIST_MISSION_ID = 6
+    if CHECK_LIST_MISSION_ID in mission_ids:
+        user_mission_submission = await UserMissionSubmission.objects.get(
+            user_id=user_id, mission_id=CHECK_LIST_MISSION_ID
+        )
+        if user_mission_submission.extra_score >= static.CHECK_LIST_POINT_SCORE * 8:
+            user_achievement, created = await UserAchievement.objects.get_or_create(
+                user_id=user_id, achievement_id=achievement_id
+            )
+            if created:
+                achievement = await Achievement.objects.get(id=achievement_id)
+                await send_achievement(bot, user_id, achievement)
+
+
+async def check_photo_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id: int):
+    liked_cnt = 0
+    for submission in accepted_submissions:
+        if submission.picture_is_liked:
+            liked_cnt += 1
+    if liked_cnt >= 3:
+        user_achievement, created = await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=achievement_id
+        )
+        if created:
+            achievement = await Achievement.objects.get(id=achievement_id)
+            await send_achievement(bot, user_id, achievement)
+
+
+async def check_swap_star_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id: int):
+    TECH_SWAP_MISSION_ID = 3
+    ECO_SWAP_MISSION_ID = 4
+
+    mission_ids = {submission.mission_id for submission in accepted_submissions}
+    if TECH_SWAP_MISSION_ID in mission_ids and ECO_SWAP_MISSION_ID in mission_ids:
+        user_achievement, created = await UserAchievement.objects.get_or_create(
+            user_id=user_id, achievement_id=achievement_id
+        )
+        if created:
+            achievement = await Achievement.objects.get(id=achievement_id)
+            await send_achievement(bot, user_id, achievement)
+
+
+async def check_achievement_updates(bot, user_id: int):
+    # user = await User.objects.get(id=user_id)
 
     accepted_submissions = await UserMissionSubmission.objects.filter(
         user_id=user_id, status=RequestStatus.ACCEPTED
@@ -385,11 +483,29 @@ async def check_achievement_updates(user_id: int):
 
     user_score = await get_user_missions_score(user_id)
 
-    # «Зелёный старт» 🚀, «Сила сотни» 💯, «Eco Legend» 🏆 (1-3)
-    await check_credits_achievements(user_id, user_score)
+    # 2-4 «Зелёный старт» 🚀, «Сила сотни» 💯, «Eco Legend» 🏆 (1-3)
+    await check_credits_achievements(bot, user_id, user_score)
 
-    # «Тур по зонам» 🗺 (4 - ANY_MISSION_FROM_ALL_LOCATIONS_ACHIEVEMENT_ID)
-    await check_any_mission_achievement(user_id, accepted_submissions)
+    # 5, 'Тур по зонам 🗺', 'Выполни ≥ 1 миссии в каждой зоне-активации'
+    await check_any_mission_achievement(bot, user_id, accepted_submissions, 5)
+
+    # 6, 'Recycler 🔄', 'Сдай вещи в боксы на переработку от Второго Дыхания'
+    await check_recycler_achievement(bot, user_id, accepted_submissions, 6)
+
+    # 7, 'Fix-It Pro 🔧', 'Проведи 1 ремонт + 1 апсайкл-проект'
+    await check_fix_it_pro_achievement(bot, user_id, accepted_submissions, 7)
+
+    # 8, 'VR-Энтузиаст 🥽', 'Создай ≥ 1 VR-прототип + 1 инсайт'
+    pass
+
+    # 9, 'Digital Detoxer 🧹', 'Закрой ≥ 8 пунктов чек-листа Data Detox'
+    await check_digital_detoxer_achievement(bot, user_id, accepted_submissions, 9)
+
+    # 10 'Фотохудожник 📸', 'Выполни 3 качественных фото-миссий. (ручная проверка)'
+    await check_photo_achievement(bot, user_id, accepted_submissions, 10)
+
+    # 11 'Swap Star ✨', 'Проведи сделку на Эко-свопе и Техносвопе'
+    await check_swap_star_achievement(bot, user_id, accepted_submissions, 11)
 
     # recycler ??
 

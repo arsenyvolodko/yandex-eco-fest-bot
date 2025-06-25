@@ -4,7 +4,7 @@ from aiogram import Dispatcher, Router, F
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery
 
 from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus, MissionVerificationMethod
@@ -42,7 +42,6 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_picture_rating_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
-    send_locations_with_image,
     get_location_info_text,
     get_state_by_verification_method,
     VERIFICATION_METHOD_TO_STATE,
@@ -59,9 +58,8 @@ from yandex_eco_fest_bot.bot.utils import (
     edit_photo_message,
     send_photo_message,
     get_location_media_url,
-    get_achievement_media_url, send_start_achievement,
+    get_achievement_media_url, send_start_achievement, check_achievement_updates,
 )
-from yandex_eco_fest_bot.core import config
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
     User,
@@ -99,6 +97,11 @@ async def handle_after_start_callback(call: CallbackQuery):
         text_storage.AFTER_START_TEXT.format(name=call.from_user.first_name),
         reply_markup=get_one_button_keyboard(ButtonsStorage.GET_START_ACHIEVEMENT),
     )
+
+
+@router.callback_query(F.data == ButtonsStorage.HIDE_MESSAGE.callback)
+async def handle_after_start_callback(call: CallbackQuery):
+    await call.message.delete()
 
 
 @router.callback_query(F.data == ButtonsStorage.GET_START_ACHIEVEMENT.callback)
@@ -284,14 +287,26 @@ async def handle_no_verification_mission_callback(
     ).first()
 
     if old_submission and old_submission.status == RequestStatus.ACCEPTED:
-        await call.message.edit_text(
-            text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
+        # await call.message.edit_text(
+        #     text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
+        #     reply_markup=get_go_to_main_menu_keyboard(
+        #         text_storage.GO_BACK_TO_MAIN_MENU,
+        #         with_new_message=True,
+        #         with_delete_markup=True,
+        #     ),
+        #     parse_mode=ParseMode.HTML,
+        # )
+        # return
+        await edit_photo_message(
+            call.bot,
+            message=call.message,
+            photo_url=get_location_media_url(mission.location),
+            caption=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
             reply_markup=get_go_to_main_menu_keyboard(
                 text_storage.GO_BACK_TO_MAIN_MENU,
                 with_new_message=True,
                 with_delete_markup=True,
             ),
-            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -300,9 +315,13 @@ async def handle_no_verification_mission_callback(
         mission_id=mission.id,
         status=RequestStatus.ACCEPTED,
     )
+    await check_achievement_updates(call.bot, call.from_user.id)
 
-    await call.message.edit_text(
-        text=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=get_location_media_url(mission.location),
+        caption=text_storage.NO_VERIFICATION_AND_CHECK_LIST_MISSION_ACCEPTED_INFO.format(
             mission_name=mission.name,
             mission_score=mission.score,
             mission_description=mission.description,
@@ -312,7 +331,6 @@ async def handle_no_verification_mission_callback(
             with_new_message=True,
             with_delete_markup=True,
         ),
-        parse_mode=ParseMode.HTML,
     )
 
 
@@ -336,13 +354,8 @@ async def handle_checklist_mission_callback(
     )
 
     mission = await Mission.objects.get(id=callback_data.mission_id)
-    # text = get_mission_info_text(mission, None)
     text = await get_mission_task_text(mission, None)
-    # await call.message.edit_text(
-    #     text=text,
-    #     reply_markup=new_reply_markup,
-    #     parse_mode=ParseMode.HTML,
-    # )
+
     await edit_photo_message(
         call.bot,
         message=call.message,
@@ -358,7 +371,6 @@ async def handle_mission_with_dialog_callback(
     callback_data: NoVerificationWithDialogCallbackFactory,
     state: FSMContext,
 ):
-    print("AAAAAA")
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
         mission_id=mission.id, user_id=call.from_user.id
@@ -423,6 +435,7 @@ async def evaluate_check_list_score_callback(
         status=RequestStatus.ACCEPTED,
         extra_score=score,
     )
+    await check_achievement_updates(call.bot, call.from_user.id)
 
     await edit_photo_message(
         call.bot,
@@ -505,6 +518,7 @@ async def handle_verification_code_mission(
     )
     if success:
         await state.clear()
+        await check_achievement_updates(message.bot, user.id)
         await message.answer(
             text=answer,
             reply_markup=get_go_to_main_menu_keyboard(
@@ -637,6 +651,7 @@ async def handle_robot_picture_submission(message: Message, state: FSMContext):
         mission_id=mission_id,
         status=RequestStatus.ACCEPTED,
     )
+    await check_achievement_updates(message.bot, message.from_user.id)
 
     file_id = message.photo[-1].file_id
 
@@ -791,6 +806,8 @@ async def handle_request_answer_callback(
             with_delete_markup=True,
         )
 
+        await check_achievement_updates(call.bot, user_mission_submission.user_id)
+
     else:
 
         edit_old_message_new_text = text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
@@ -833,7 +850,7 @@ async def handle_like_picture_callback(
     user_mission_submission.picture_is_liked = True
     await user_mission_submission.save()
 
-    # todo check achievement with pictures here
+    await check_achievement_updates(call.bot, user_mission_submission.user_id)
 
     await call.message.edit_caption(
         caption=text_storage.PICTURE_HAS_BEEN_LIKED, reply_markup=None

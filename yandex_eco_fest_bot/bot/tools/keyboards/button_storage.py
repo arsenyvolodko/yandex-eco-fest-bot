@@ -14,6 +14,7 @@ class ButtonsStorage(metaclass=AutoNameButtonMeta):
 
     AFTER_START_BUTTON = Button("Даа")
     GET_START_ACHIEVEMENT = Button("Поехали!")
+    HIDE_MESSAGE = Button("Скрыть сообщение")
 
     # Base menu buttons
     LOCATIONS_MAP = Button("📍Карта зон")
