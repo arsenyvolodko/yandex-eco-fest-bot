@@ -39,7 +39,8 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_go_to_achievements_keyboard,
     get_submission_options_keyboard,
     get_check_list_keyboard,
-    get_picture_rating_keyboard,
+    get_picture_rating_keyboard, get_first_question_keyboard, get_second_question_keyboard, get_third_question_keyboard,
+    get_fourth_question_keyboard, get_fifth_question_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     get_location_info_text,
@@ -58,7 +59,7 @@ from yandex_eco_fest_bot.bot.utils import (
     edit_photo_message,
     send_photo_message,
     get_location_media_url,
-    get_achievement_media_url, send_start_achievement, check_achievement_updates,
+    get_achievement_media_url, send_start_achievement, check_achievement_updates, get_score_name,
 )
 from yandex_eco_fest_bot.core.redis_config import r
 from yandex_eco_fest_bot.db.tables import (
@@ -67,7 +68,7 @@ from yandex_eco_fest_bot.db.tables import (
     Mission,
     UserMissionSubmission,
     Achievement,
-    UserAchievement,
+    UserAchievement, UserTest,
 )
 
 dp = Dispatcher()
@@ -951,4 +952,109 @@ async def handle_my_progres_callback(call: CallbackQuery):
         reply_markup=get_go_to_main_menu_keyboard(
             button_text=text_storage.GO_BACK_TO_MAIN_MENU
         ),
+    )
+
+
+@router.callback_query(F.data == ButtonsStorage.START_TEST.callback)
+async def handle_start_test_callback(call: CallbackQuery):
+    old_test_submission = await UserTest.objects.filter(
+        user_id=call.from_user.id
+    ).first()
+
+    if old_test_submission:
+        await call.answer(
+            text=text_storage.TEST_ALREADY_COMPLETED.format(
+                score=f"{old_test_submission.score} {get_score_name(old_test_submission.score)}"
+            ),
+            show_alert=True,
+        )
+        return
+
+    await call.message.delete()
+    await call.message.answer(
+        text=text_storage.QUESTION_1,
+        reply_markup=get_first_question_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+
+@router.callback_query(F.data.in_(static.TEST_Q_1_BUTTONS))
+async def handle_first_question_answer(call: CallbackQuery):
+    if call.data == ButtonsStorage.OPTION_1_2.callback:
+        r.set(f"test_{call.from_user.id}_1", "True")
+    else:
+        r.set(f"test_{call.from_user.id}_1", "False")
+
+    await call.message.edit_text(
+        text=text_storage.QUESTION_2,
+        reply_markup=get_second_question_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+@router.callback_query(F.data.in_(static.TEST_Q_2_BUTTONS))
+async def handle_second_question_answer(call: CallbackQuery):
+    if call.data == ButtonsStorage.OPTION_2_1.callback:
+        r.set(f"test_{call.from_user.id}_2", "True")
+    else:
+        r.set(f"test_{call.from_user.id}_2", "False")
+
+    await call.message.edit_text(
+        text=text_storage.QUESTION_3,
+        reply_markup=get_third_question_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+@router.callback_query(F.data.in_(static.TEST_Q_3_BUTTONS))
+async def handle_third_question_answer(call: CallbackQuery):
+    if call.data == ButtonsStorage.OPTION_3_2.callback:
+        r.set(f"test_{call.from_user.id}_3", "True")
+    else:
+        r.set(f"test_{call.from_user.id}_3", "False")
+
+    await call.message.edit_text(
+        text=text_storage.QUESTION_4,
+        reply_markup=get_fourth_question_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+@router.callback_query(F.data.in_(static.TEST_Q_4_BUTTONS))
+async def handle_third_question_answer(call: CallbackQuery):
+    if call.data == ButtonsStorage.OPTION_4_5.callback:
+        r.set(f"test_{call.from_user.id}_4", "True")
+    else:
+        r.set(f"test_{call.from_user.id}_4", "False")
+
+    await call.message.edit_text(
+        text=text_storage.QUESTION_5,
+        reply_markup=get_fifth_question_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+
+@router.callback_query(F.data.in_(static.TEST_Q_5_BUTTONS))
+async def handle_third_question_answer(call: CallbackQuery):
+    if call.data == ButtonsStorage.OPTION_5_1.callback:  # todo
+        r.set(f"test_{call.from_user.id}_5", "True")
+    else:
+        r.set(f"test_{call.from_user.id}_5", "False")
+
+    cnt = 0
+    for i in range(1, 6):
+        if r.get(f"test_{call.from_user.id}_{i}") == 'True':
+            cnt += 1
+
+    await UserTest.objects.get_or_create(
+        user_id=call.from_user.id,
+        score=cnt
+    )
+
+    score_string = get_score_name(cnt)
+    score = f"{cnt} {score_string}"
+    await call.message.edit_text(
+        text=text_storage.TOTAL_TEST_SCORE.format(score=score),
+        reply_markup=get_go_to_main_menu_keyboard(
+            with_new_message=True,
+            with_delete_markup=True
+        ),
+        parse_mode=ParseMode.HTML
     )

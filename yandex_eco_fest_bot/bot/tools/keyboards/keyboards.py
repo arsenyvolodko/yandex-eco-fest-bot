@@ -62,7 +62,7 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
         [ButtonsStorage.LOCATIONS_MAP.get_button()],
         [ButtonsStorage.MY_PROGRES.get_button()],
         [ButtonsStorage.TEAM_PROGRES.get_button()],
-        # [ButtonsStorage.HELP.get_button()],
+        [ButtonsStorage.START_TEST.get_button()],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
@@ -364,3 +364,53 @@ def get_achievement_keyboard(achievement: Achievement) -> InlineKeyboardMarkup:
 
     builder.adjust(1)
     return builder.as_markup()
+
+
+def get_first_question_keyboard() -> InlineKeyboardMarkup:
+    inline_keyboard = [[
+        ButtonsStorage.OPTION_1_1.get_button(),
+        ButtonsStorage.OPTION_1_2.get_button(),
+        ButtonsStorage.OPTION_1_3.get_button(),
+        ButtonsStorage.OPTION_1_4.get_button()]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def get_second_question_keyboard() -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [ButtonsStorage.OPTION_2_1.get_button(),
+        ButtonsStorage.OPTION_2_2.get_button(),
+        ButtonsStorage.OPTION_2_3.get_button(),
+        ButtonsStorage.OPTION_2_4.get_button()],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def get_third_question_keyboard() -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [ButtonsStorage.OPTION_3_1.get_button(),
+        ButtonsStorage.OPTION_3_2.get_button(),
+        ButtonsStorage.OPTION_3_3.get_button(),
+        ButtonsStorage.OPTION_3_4.get_button()],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+def get_fourth_question_keyboard() -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [ButtonsStorage.OPTION_4_1.get_button(),
+        ButtonsStorage.OPTION_4_2.get_button(),
+        ButtonsStorage.OPTION_4_3.get_button(),
+        ButtonsStorage.OPTION_4_4.get_button(),
+        ButtonsStorage.OPTION_4_5.get_button()],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+def get_fifth_question_keyboard() -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [ButtonsStorage.OPTION_5_1.get_button(),
+        ButtonsStorage.OPTION_5_2.get_button(),
+        ButtonsStorage.OPTION_5_3.get_button(),
+        ButtonsStorage.OPTION_5_4.get_button(),
+        ButtonsStorage.OPTION_5_5.get_button()],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

@@ -1,5 +1,6 @@
 from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod
 from yandex_eco_fest_bot.bot.tools import states
+from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.core.config import MEDIA_DIR
 
 CHECK_LIST_POINT_SCORE = 2
@@ -52,3 +53,39 @@ VERIFICATION_METHOD_TEXT = {
 
 LOCATIONS_TOTAL_COUNT = 13
 ROBOLAB_KIDS_LOCATION_ID = 11
+
+TEST_Q_1_BUTTONS = {
+    ButtonsStorage.OPTION_1_1.callback,
+    ButtonsStorage.OPTION_1_2.callback,
+    ButtonsStorage.OPTION_1_3.callback,
+    ButtonsStorage.OPTION_1_4.callback,
+}
+
+TEST_Q_2_BUTTONS = {
+    ButtonsStorage.OPTION_2_1.callback,
+    ButtonsStorage.OPTION_2_2.callback,
+    ButtonsStorage.OPTION_2_3.callback,
+    ButtonsStorage.OPTION_2_4.callback,
+}
+
+TEST_Q_3_BUTTONS = {
+    ButtonsStorage.OPTION_3_1.callback,
+    ButtonsStorage.OPTION_3_2.callback,
+    ButtonsStorage.OPTION_3_3.callback,
+    ButtonsStorage.OPTION_3_4.callback,
+}
+TEST_Q_4_BUTTONS = {
+    ButtonsStorage.OPTION_4_1.callback,
+    ButtonsStorage.OPTION_4_2.callback,
+    ButtonsStorage.OPTION_4_3.callback,
+    ButtonsStorage.OPTION_4_4.callback,
+    ButtonsStorage.OPTION_4_5.callback,
+}
+
+TEST_Q_5_BUTTONS = {
+    ButtonsStorage.OPTION_5_1.callback,
+    ButtonsStorage.OPTION_5_2.callback,
+    ButtonsStorage.OPTION_5_3.callback,
+    ButtonsStorage.OPTION_5_4.callback,
+    ButtonsStorage.OPTION_5_5.callback,
+}

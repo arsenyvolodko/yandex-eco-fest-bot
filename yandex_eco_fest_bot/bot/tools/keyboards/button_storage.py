@@ -20,6 +20,34 @@ class ButtonsStorage(metaclass=AutoNameButtonMeta):
     LOCATIONS_MAP = Button("📍Карта зон")
     MY_PROGRES = Button("🏆 Мой прогресс")
     TEAM_PROGRES = Button("🌳 Командный вклад")
+    START_TEST = Button("Тест")
     HELP = Button("ℹ️ Помощь")
 
     GO_TO_ACHIEVEMENTS_BUTTON = Button("🥇Бейджи")
+
+    OPTION_1_1 = Button("A")
+    OPTION_1_2 = Button("B")
+    OPTION_1_3 = Button("C")
+    OPTION_1_4 = Button("D")
+
+    OPTION_2_1 = Button("A")
+    OPTION_2_2 = Button("B")
+    OPTION_2_3 = Button("C")
+    OPTION_2_4 = Button("D")
+
+    OPTION_3_1 = Button("A")
+    OPTION_3_2 = Button("B")
+    OPTION_3_3 = Button("C")
+    OPTION_3_4 = Button("D")
+
+    OPTION_4_1 = Button("A")
+    OPTION_4_2 = Button("B")
+    OPTION_4_3 = Button("C")
+    OPTION_4_4 = Button("D")
+    OPTION_4_5 = Button("E")
+
+    OPTION_5_1 = Button("A")
+    OPTION_5_2 = Button("B")
+    OPTION_5_3 = Button("C")
+    OPTION_5_4 = Button("D")
+    OPTION_5_5 = Button("E")

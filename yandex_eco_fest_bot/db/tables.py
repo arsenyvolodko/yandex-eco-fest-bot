@@ -172,3 +172,16 @@ class UserAchievement(BaseTable):
 
     def __str__(self):
         return f"UserAchievement(id={self.id}, user_id={self.user_id}, achievement_id={self.achievement_id})"
+
+
+class UserTest(BaseTable):
+    __tablename__ = "user_test"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    score: Mapped[int] = mapped_column(nullable=False, default=0)
+
+    user: Mapped["User"] = relationship(User, lazy="selectin")
+
+    def __str__(self):
+        return f"UserTest(id={self.id}, user_id={self.user_id}, score={self.score})"

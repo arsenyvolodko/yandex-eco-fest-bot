@@ -95,6 +95,16 @@ def get_achievement_media_url(achievement: Achievement):
     return f"{static.ACHIEVEMENTS_MEDIA_DIR}/{achievement.id}.png"
 
 
+def get_score_name(score: int) -> str:
+    str_score = str(score)
+    if str_score[-1] == '1':
+        return "балл"
+    elif str_score[-1] in ('2', '3', '4'):
+        return "балла"
+    else:
+        return "баллов"
+
+
 async def send_start_achievement(bot, chat_id, achievement: Achievement):
     media_url = get_achievement_media_url(achievement)
     text = text_storage.GET_ACHIEVEMENTS_TEXT.format(achievement_name=achievement.name)
