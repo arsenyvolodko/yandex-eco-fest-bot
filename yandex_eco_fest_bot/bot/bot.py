@@ -53,7 +53,6 @@ from yandex_eco_fest_bot.bot.utils import (
     check_verification_code,
     process_verification_code_submission,
     get_mission_task_text,
-    get_user_missions_score,
     edit_photo_message,
     send_photo_message,
     get_location_media_url,
@@ -147,7 +146,7 @@ async def handle_main_menu_callback(
             call.message.chat.id,
             photo_url=static.MAIN_MENU_MEDIA_URL,
             caption=text_storage.MAIN_MENU_TEXT,
-            reply_markup=get_main_menu_keyboard(),
+            reply_markup=get_main_menu_keyboard(call.from_user.id),
         )
         return
 
@@ -156,7 +155,7 @@ async def handle_main_menu_callback(
         call.message,
         static.MAIN_MENU_MEDIA_URL,
         caption=text_storage.MAIN_MENU_TEXT,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_main_menu_keyboard(call.from_user.id),
     )
 
 
@@ -167,9 +166,26 @@ async def handle_main_menu_command(message: Message):
         message.chat.id,
         photo_url=static.MAIN_MENU_MEDIA_URL,
         caption=text_storage.MAIN_MENU_TEXT,
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_main_menu_keyboard(message.from_user.id),
     )
 
+
+@router.callback_query(F.data == ButtonsStorage.ADMIN_BUTTON.callback)
+async def handle_admin_button_callback(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+
+    if call.from_user.id not in static.ADMIN_IDS:
+        await call.answer(text="У вас недостаточно прав", show_alert=True)
+        return
+
+    await call.message.delete()
+
+    await call.message.answer(
+        text="Введи текст сообщения которое отправить всем. Можно добавить одно фото, но важно, чтобы это было в одном сообщении. Используй именно фото, а не файл с фото.",
+        reply_markup=get_cancel_state_keyboard()
+    )
+
+    await state.set_state(states.WAITING_FOR_ADMIN_MESSAGE)
 
 # Locations
 
@@ -1023,3 +1039,49 @@ async def handle_third_question_answer(call: CallbackQuery):
         ),
         parse_mode=ParseMode.HTML
     )
+
+
+@router.message(states.WAITING_FOR_ADMIN_MESSAGE)
+async def handle_robot_picture_submission(message: Message, state: FSMContext):
+
+    await state.clear()
+
+    if message.from_user.id not in static.ADMIN_IDS:
+        await message.answer(
+            text="У вас нет прав на отправку сообщений в этот чат."
+        )
+        return
+
+    await message.answer(
+        text="Отправляю.."
+    )
+
+    users = await User.objects.all()
+
+    if not message.media_group_id and not message.photo:
+        for user in users:
+            try:
+                await message.bot.send_message(
+                    chat_id=user.id,
+                    text=message.text,
+                    reply_markup=get_one_button_keyboard(ButtonsStorage.HIDE_MESSAGE)
+                )
+            except Exception:
+                pass
+
+    else:
+
+        file_id = message.photo[-1].file_id
+
+        for user in users:
+            try:
+                await message.bot.send_photo(
+                    chat_id=user.id,
+                    photo=file_id,
+                    caption=message.text,
+                    reply_markup=get_one_button_keyboard(ButtonsStorage.HIDE_MESSAGE)
+                )
+            except Exception:
+                pass
+
+    await message.answer("Сообщение отправлено всем пользователям.")

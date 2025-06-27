@@ -53,13 +53,16 @@ def get_go_to_main_menu_keyboard(
     return builder.as_markup()
 
 
-def get_main_menu_keyboard() -> InlineKeyboardMarkup:
+def get_main_menu_keyboard(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [ButtonsStorage.LOCATIONS_MAP.get_button()],
         [ButtonsStorage.MY_PROGRES.get_button()],
-        # [ButtonsStorage.TEAM_PROGRES.get_button()],
         [ButtonsStorage.START_TEST.get_button()],
     ]
+
+    if user_id in static.ADMIN_IDS:
+        inline_keyboard.append([ButtonsStorage.ADMIN_BUTTON.get_button()])
+
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 

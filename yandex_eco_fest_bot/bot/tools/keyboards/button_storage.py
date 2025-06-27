@@ -23,6 +23,7 @@ class ButtonsStorage(metaclass=AutoNameButtonMeta):
     START_TEST = Button("Тест")
     HELP = Button("ℹ️ Помощь")
 
+    ADMIN_BUTTON = Button("Отправить сообщение всем")
     GO_TO_ACHIEVEMENTS_BUTTON = Button("🥇Бейджи")
 
     OPTION_1_1 = Button("A")

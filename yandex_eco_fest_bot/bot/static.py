@@ -30,6 +30,7 @@ CHECK_LIST_QUESTIONS = [
     "Я покрасил(а) урну",
 ]
 
+ADMIN_IDS = [506954303, 379924180]
 LOCATIONS_MEDIA_DIR = f"{MEDIA_DIR}/locations"
 ACHIEVEMENTS_MEDIA_DIR = f"{MEDIA_DIR}/achievements"
 PERSONAL_WORK_MEDIA_URL = f"{MEDIA_DIR}/personal_work.png"
