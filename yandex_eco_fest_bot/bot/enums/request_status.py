@@ -2,6 +2,6 @@ from django.db.models import TextChoices
 
 
 class RequestStatus(TextChoices):
-    PENDING = "pending", "На проверке ⏳"
-    DECLINED = "declined", "Отклонено ❌"
-    ACCEPTED = "accepted", "Принято ✅"
+    PENDING = "pending", "на проверке"
+    DECLINED = "declined", "отклонено"
+    ACCEPTED = "accepted", "засчитано"

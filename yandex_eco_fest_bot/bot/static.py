@@ -3,7 +3,7 @@ from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.core.config import MEDIA_DIR
 
-CHECK_LIST_POINT_SCORE = 2
+CHECK_LIST_POINT_SCORE = 5
 
 VERIFICATION_METHOD_TO_STATE = {
     MissionVerificationMethod.PHOTO: states.WAITING_FOR_PICTURE_SUBMISSION,
@@ -36,21 +36,12 @@ ACHIEVEMENTS_MEDIA_DIR = f"{MEDIA_DIR}/achievements"
 PERSONAL_WORK_MEDIA_URL = f"{MEDIA_DIR}/personal_work.png"
 TEAM_WORK_MEDIA_URL = f"{MEDIA_DIR}/team_work.png"
 MAP_MEDIA_URL = f"{MEDIA_DIR}/map.png"
-MAIN_MENU_MEDIA_URL = f"{MEDIA_DIR}/map.png"
+MAIN_MAP_MEDIA_URL = f"{MEDIA_DIR}/main_map.jpeg"
+MAIN_MENU_MEDIA_URL = f"{MEDIA_DIR}/main_menu_pic.png"
+PROGRAM_MEDIA_URL = f"{MEDIA_DIR}/program.jpeg"
 
 COMMON_PICTURES_CHAT_ID = -1002672226725  # https://t.me/+MI4JcU5xwSc4NTYy
 KIDS_ROBOTS_CHAT_ID = -1002682842161  # https://t.me/+9sNd3OtsEgAzMzFi
-
-VERIFICATION_METHOD_TEXT = {
-    MissionVerificationMethod.PHOTO: "Для решения задания отправьте фото, на котором видно, что вы выполнили задание.",
-    MissionVerificationMethod.VOICE: "Для решения задания отправьте голосовое сообщение, в котором расскажете о выполнении задания.",
-    MissionVerificationMethod.TEXT: "Для решения задания отправьте текстовое сообщение, в котором расскажете о выполнении задания.",
-    MissionVerificationMethod.VIDEO: "Для решения задания отправьте видео-кружочек, на котором видно, что вы выполнили задание.",
-    MissionVerificationMethod.VERIFICATION_CODE: "Для решения задания отправьте код, который вы получили от модератора.",
-    # MissionVerificationMethod.NO_VERIFICATION: "Когда выполнишь задание нажми ",
-    MissionVerificationMethod.CHECK_LIST: "Для решения задания отметьте выполненные пункты в чек-листе.",
-    # MissionVerificationMethod.NO_VERIFICATION_DIALOG: "",
-}
 
 LOCATIONS_TOTAL_COUNT = 13
 ROBOLAB_KIDS_LOCATION_ID = 11
@@ -80,7 +71,6 @@ TEST_Q_4_BUTTONS = {
     ButtonsStorage.OPTION_4_2.callback,
     ButtonsStorage.OPTION_4_3.callback,
     ButtonsStorage.OPTION_4_4.callback,
-    ButtonsStorage.OPTION_4_5.callback,
 }
 
 TEST_Q_5_BUTTONS = {
@@ -88,5 +78,4 @@ TEST_Q_5_BUTTONS = {
     ButtonsStorage.OPTION_5_2.callback,
     ButtonsStorage.OPTION_5_3.callback,
     ButtonsStorage.OPTION_5_4.callback,
-    ButtonsStorage.OPTION_5_5.callback,
 }

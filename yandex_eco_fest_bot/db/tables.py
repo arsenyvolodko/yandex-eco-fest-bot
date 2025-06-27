@@ -22,8 +22,7 @@ class User(BaseTable):
     )
 
     username: Mapped[str] = mapped_column(
-        nullable=False,
-        unique=True,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

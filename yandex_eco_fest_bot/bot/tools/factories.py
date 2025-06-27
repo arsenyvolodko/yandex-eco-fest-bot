@@ -7,11 +7,6 @@ class MainMenuCallbackFactory(CallbackData, prefix="main_menu_callback_factory")
     delete_message: bool = False
 
 
-class LocationCallbackFactory(CallbackData, prefix="location_callback_factory"):
-    id: int
-    with_new_message: bool = True
-
-
 class MissionCallbackFactory(CallbackData, prefix="mission_callback_factory"):
     id: int
 

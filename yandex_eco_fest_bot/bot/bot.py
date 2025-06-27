@@ -5,15 +5,15 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
+from aiogram.utils.media_group import MediaGroupBuilder
 
 from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import RequestStatus, MissionVerificationMethod
-from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus
 from yandex_eco_fest_bot.bot.static import CAPTION_TYPE_VERIFICATION_METHODS
+from yandex_eco_fest_bot.bot.text_storage import PRE_TEST_TEXT
 from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.factories import (
     MainMenuCallbackFactory,
-    LocationCallbackFactory,
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
@@ -32,13 +32,12 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_missions_keyboard,
     get_specific_mission_keyboard,
     get_cancel_state_keyboard,
-    get_achievements_keyboard,
     get_achievement_keyboard,
-    get_go_to_achievements_keyboard,
     get_submission_options_keyboard,
     get_check_list_keyboard,
     get_picture_rating_keyboard, get_first_question_keyboard, get_second_question_keyboard, get_third_question_keyboard,
-    get_fourth_question_keyboard, get_fifth_question_keyboard,
+    get_fourth_question_keyboard, get_fifth_question_keyboard, get_quest_menu_keyboard, get_back_to_quest_keyboard,
+    get_achievements_keyboard, get_pretest_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     get_location_info_text,
@@ -91,9 +90,60 @@ async def handle_start_command(message: Message):
 
 @router.callback_query(F.data == ButtonsStorage.AFTER_START_BUTTON.callback)
 async def handle_after_start_callback(call: CallbackQuery):
+    if call.from_user.first_name:
+        name = f" {call.from_user.first_name}"
+    else:
+        name = ""
+
+    await call.message.edit_reply_markup(
+        reply_markup=None
+    )
+
+    await call.message.answer(
+        text=text_storage.AFTER_START_TEXT.format(name=name),
+    )
+
+    media_group = MediaGroupBuilder()
+    media_group.add_photo(
+        media=static.PROGRAM_MEDIA_URL
+    )
+    media_group.add_photo(
+        media=static.MAIN_MAP_MEDIA_URL,
+        caption="[info text]",
+        parse_mode=ParseMode.HTML,
+    )
+
+    await call.message.answer_media_group(
+        media_group.build(),
+    )
+
+    await call.message.answer(
+        text="[text]",
+        reply_markup=get_one_button_keyboard(
+            ButtonsStorage.THANKS_BUTTON
+        )
+    )
+
+
+
+# MAIN_MAP
+
+@router.callback_query(F.data == ButtonsStorage.MAIN_MAP.callback)
+async def handle_after_start_callback(call: CallbackQuery):
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=static.MAIN_MAP_MEDIA_URL,
+        caption=None,
+        reply_markup=get_go_to_main_menu_keyboard(text_storage.GO_BACK_TO_MAIN_MENU)
+    )
+
+
+@router.callback_query(F.data == ButtonsStorage.THANKS_BUTTON.callback)
+async def handle_after_start_callback(call: CallbackQuery):
     await call.message.edit_text(
-        text_storage.AFTER_START_TEXT.format(name=call.from_user.first_name),
-        reply_markup=get_one_button_keyboard(ButtonsStorage.GET_START_ACHIEVEMENT),
+        text_storage.INTRO_TEXT,
+        reply_markup=get_go_to_main_menu_keyboard(button_text="Интересно!", with_delete_markup=True, with_new_message=True)
     )
 
 
@@ -161,6 +211,7 @@ async def handle_main_menu_callback(
 
 @router.message(Command("menu"))
 async def handle_main_menu_command(message: Message):
+    print("HEREEE")
     await send_photo_message(
         message.bot,
         message.chat.id,
@@ -190,6 +241,17 @@ async def handle_admin_button_callback(call: CallbackQuery, state: FSMContext):
 # Locations
 
 
+@router.callback_query(F.data == ButtonsStorage.QUEST_BUTTON.callback)
+async def handle_location_map_callback(call: CallbackQuery):
+    reply_markup = get_quest_menu_keyboard()
+    await edit_photo_message(
+        call.bot,
+        message=call.message,
+        photo_url=static.MAP_MEDIA_URL,
+        caption=text_storage.LOCATIONS_MAP_TEXT,
+        reply_markup=reply_markup,
+    )
+
 @router.callback_query(F.data == ButtonsStorage.LOCATIONS_MAP.callback)
 async def handle_location_map_callback(call: CallbackQuery):
     locations = await Location.objects.filter(parent=None).all()
@@ -202,39 +264,27 @@ async def handle_location_map_callback(call: CallbackQuery):
         reply_markup=reply_markup,
     )
 
-
-@router.callback_query(LocationCallbackFactory.filter())
-async def handle_location_callback(
-    call: CallbackQuery, callback_data: LocationCallbackFactory, state: FSMContext
-):
-    await state.clear()
-
-    location = await Location.objects.get(id=callback_data.id)
-    text = get_location_info_text(location)
-
-    missions_status_score_schema: LocationMissionsStatus = (
-        await get_missions_with_score(user_id=call.from_user.id, location=location)
-    )
-    reply_markup = get_missions_keyboard(missions_status_score_schema)
-
-    # if not callback_data.with_new_message:
-    await edit_photo_message(
-        call.bot,
-        call.message,
-        get_location_media_url(location),
-        caption=text,
-        reply_markup=reply_markup,
-    )
-    # return
-
-    # await call.message.delete()
-    # await send_photo_message(
-    #     call.bot,
-    #     call.message.chat.id,
-    #     get_location_media_url(location),
-    #     caption=text,
-    #     reply_markup=reply_markup,
-    # )
+# @router.callback_query(LocationCallbackFactory.filter())
+# async def handle_location_callback(
+#     call: CallbackQuery, callback_data: LocationCallbackFactory, state: FSMContext
+# ):
+#     await state.clear()
+#
+#     location = await Location.objects.get(id=callback_data.id)
+#     text = get_location_info_text(location)
+#
+#     missions_status_score_schema: LocationMissionsStatus = (
+#         await get_missions_with_score(user_id=call.from_user.id, location=location)
+#     )
+#     reply_markup = get_missions_keyboard(missions_status_score_schema)
+#
+#     await edit_photo_message(
+#         call.bot,
+#         call.message,
+#         get_location_media_url(location),
+#         caption=text,
+#         reply_markup=reply_markup,
+#     )
 
 
 @router.callback_query(MissionCallbackFactory.filter())
@@ -393,7 +443,10 @@ async def handle_mission_with_dialog_callback(
         call.bot,
         message=call.message,
         photo_url=get_location_media_url(mission.location),
-        caption=text_storage.SEND_ROBOT_PIC,
+        caption=None,
+    )
+    await call.message.answer(
+        text=text_storage.SEND_ROBOT_PIC,
     )
 
 
@@ -812,10 +865,18 @@ async def handle_request_answer_callback(
             request_status=RequestStatus.DECLINED.label
         )
 
-        text = text_storage.SUBMISSION_REJECTED.format(
-            mission_name=mission.name,
-            moderator=f"@{call.from_user.username}",
-        )
+        if call.from_user.username:
+
+            text = text_storage.SUBMISSION_REJECTED_WITH_MODERATOR.format(
+                mission_name=mission.name,
+                moderator=f"@{call.from_user.username}",
+            )
+
+        else:
+            text = text_storage.SUBMISSION_REJECTED.format(
+                mission_name=mission.name,
+            )
+
         reply_markup = get_go_to_main_menu_keyboard(
             button_text=text_storage.GOT_IT,
             with_new_message=True,
@@ -857,25 +918,6 @@ async def handle_like_picture_callback(
 
 # Personal progres
 
-'''
-@router.callback_query(F.data == ButtonsStorage.TEAM_PROGRES.callback)
-async def handle_my_progres_callback(call: CallbackQuery):
-    user_score = await UserMissionSubmission.objects.filter(
-        status=RequestStatus.ACCEPTED
-    ).all()
-    missions_score = sum([submission.mission.score for submission in user_score])
-    await edit_photo_message(
-        call.bot,
-        call.message,
-        photo_url=static.TEAM_WORK_MEDIA_URL,
-        caption=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
-        reply_markup=get_go_to_main_menu_keyboard(
-            button_text=text_storage.GO_BACK_TO_MAIN_MENU
-        ),
-    )
-
-'''
-
 @router.callback_query(F.data == ButtonsStorage.MY_PROGRES.callback)
 async def handle_my_progres_callback(call: CallbackQuery):
     user_score = await UserMissionSubmission.objects.filter(
@@ -893,7 +935,7 @@ async def handle_my_progres_callback(call: CallbackQuery):
         call.message,
         photo_url=static.PERSONAL_WORK_MEDIA_URL,
         caption=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score, team_score=total_missions_score),
-        reply_markup=get_go_to_achievements_keyboard(),
+        reply_markup=get_back_to_quest_keyboard(),
     )
 
 
@@ -936,7 +978,7 @@ async def handle_achievement_callback(
     )
 
 
-@router.callback_query(F.data == ButtonsStorage.START_TEST.callback)
+@router.callback_query(F.data == ButtonsStorage.START_TEST_1.callback)
 async def handle_start_test_callback(call: CallbackQuery):
     old_test_submission = await UserTest.objects.filter(
         user_id=call.from_user.id
@@ -945,7 +987,30 @@ async def handle_start_test_callback(call: CallbackQuery):
     if old_test_submission:
         await call.answer(
             text=text_storage.TEST_ALREADY_COMPLETED.format(
-                score=f"{old_test_submission.score} {get_score_name(old_test_submission.score)}"
+                score=old_test_submission.score
+            ),
+            show_alert=True,
+        )
+        return
+
+    await call.message.delete()
+    await call.message.answer(
+        text=PRE_TEST_TEXT,
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_pretest_keyboard()
+    )
+
+
+@router.callback_query(F.data == ButtonsStorage.START_TEST_2.callback)
+async def handle_start_test_callback(call: CallbackQuery):
+    old_test_submission = await UserTest.objects.filter(
+        user_id=call.from_user.id
+    ).first()
+
+    if old_test_submission:
+        await call.answer(
+            text=text_storage.TEST_ALREADY_COMPLETED.format(
+                score=old_test_submission
             ),
             show_alert=True,
         )
@@ -1000,7 +1065,7 @@ async def handle_third_question_answer(call: CallbackQuery):
 
 @router.callback_query(F.data.in_(static.TEST_Q_4_BUTTONS))
 async def handle_third_question_answer(call: CallbackQuery):
-    if call.data == ButtonsStorage.OPTION_4_5.callback:
+    if call.data == ButtonsStorage.OPTION_4_4.callback:
         r.set(f"test_{call.from_user.id}_4", "True")
     else:
         r.set(f"test_{call.from_user.id}_4", "False")
@@ -1014,7 +1079,7 @@ async def handle_third_question_answer(call: CallbackQuery):
 
 @router.callback_query(F.data.in_(static.TEST_Q_5_BUTTONS))
 async def handle_third_question_answer(call: CallbackQuery):
-    if call.data == ButtonsStorage.OPTION_5_1.callback:  # todo
+    if call.data == ButtonsStorage.OPTION_5_3.callback:
         r.set(f"test_{call.from_user.id}_5", "True")
     else:
         r.set(f"test_{call.from_user.id}_5", "False")
@@ -1078,7 +1143,7 @@ async def handle_robot_picture_submission(message: Message, state: FSMContext):
                 await message.bot.send_photo(
                     chat_id=user.id,
                     photo=file_id,
-                    caption=message.text,
+                    caption=message.caption,
                     reply_markup=get_one_button_keyboard(ButtonsStorage.HIDE_MESSAGE)
                 )
             except Exception:

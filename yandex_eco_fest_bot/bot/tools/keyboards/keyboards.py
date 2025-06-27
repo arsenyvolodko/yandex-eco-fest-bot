@@ -5,7 +5,6 @@ from yandex_eco_fest_bot.bot import text_storage, static
 from yandex_eco_fest_bot.bot.enums import MissionVerificationMethod, RequestStatus
 from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus, AchievementStatus
 from yandex_eco_fest_bot.bot.tools.factories import (
-    LocationCallbackFactory,
     MainMenuCallbackFactory,
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
@@ -55,15 +54,37 @@ def get_go_to_main_menu_keyboard(
 
 def get_main_menu_keyboard(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard = [
-        [ButtonsStorage.LOCATIONS_MAP.get_button()],
-        [ButtonsStorage.MY_PROGRES.get_button()],
-        [ButtonsStorage.START_TEST.get_button()],
+        [ButtonsStorage.QUEST_BUTTON.get_button()],
+        [ButtonsStorage.START_TEST_1.get_button()],
+        [ButtonsStorage.MAIN_MAP.get_button()],
     ]
 
     if user_id in static.ADMIN_IDS:
         inline_keyboard.append([ButtonsStorage.ADMIN_BUTTON.get_button()])
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def get_quest_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=ButtonsStorage.LOCATIONS_MAP.text,
+        callback_data=ButtonsStorage.LOCATIONS_MAP.callback,
+    )
+    builder.button(
+        text=ButtonsStorage.MY_PROGRES.text,
+        callback_data=ButtonsStorage.MY_PROGRES.callback,
+    )
+    builder.button(
+        text=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.text,
+        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback,
+    )
+    builder.button(
+        text=text_storage.GO_BACK_TO_MAIN_MENU,
+        callback_data=MainMenuCallbackFactory(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def get_locations_menu_keyboard(
@@ -76,15 +97,15 @@ def get_locations_menu_keyboard(
     for location in locations:
         builder.button(
             text=location.name,
-            callback_data=LocationCallbackFactory(
+            callback_data=MissionCallbackFactory(
                 id=location.id,
             ),
         )
 
     else:
         builder.button(
-            text=text_storage.GO_TO_MAIN_MENU_SHORT,
-            callback_data=MainMenuCallbackFactory(),
+            text=text_storage.GO_BACK,
+            callback_data=ButtonsStorage.QUEST_BUTTON.callback,
         )
 
     builder.adjust(1)
@@ -130,7 +151,6 @@ async def get_specific_mission_keyboard(
             )
 
         elif mission.verification_method == MissionVerificationMethod.NO_VERIFICATION_DIALOG:
-            print("GJWBLWRJV")
             builder.button(
                 text=text_storage.I_VE_DONE_MISSION_WITH_DIALOG,
                 callback_data=NoVerificationWithDialogCallbackFactory(
@@ -148,9 +168,7 @@ async def get_specific_mission_keyboard(
 
     builder.button(
         text=text_storage.GO_BACK,
-        callback_data=LocationCallbackFactory(
-            id=mission.location_id,
-        ),
+        callback_data=ButtonsStorage.LOCATIONS_MAP.callback
     )
 
     builder.adjust(1)
@@ -224,9 +242,7 @@ async def get_check_list_keyboard(
 
     builder.button(
         text=text_storage.GO_BACK,
-        callback_data=LocationCallbackFactory(
-            id=mission.location_id,
-        ),
+        callback_data=ButtonsStorage.LOCATIONS_MAP.callback
     )
 
     builder.adjust(1)
@@ -247,21 +263,6 @@ def get_picture_rating_keyboard(user_mission_submission_id) -> InlineKeyboardMar
     return builder.as_markup()
 
 
-def get_go_to_achievements_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.text,
-        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback,
-    )
-    builder.button(
-        text=text_storage.GO_BACK_TO_MAIN_MENU, callback_data=MainMenuCallbackFactory()
-    )
-
-    builder.adjust(1)
-
-    return builder.as_markup()
-
 
 def get_achievements_keyboard(
     achievement_display_schema: list[AchievementStatus]
@@ -280,7 +281,19 @@ def get_achievements_keyboard(
         )
 
     builder.button(
-        text=text_storage.GO_BACK, callback_data=ButtonsStorage.MY_PROGRES.callback
+        text=text_storage.GO_BACK, callback_data=ButtonsStorage.QUEST_BUTTON.callback
+    )
+
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_back_to_quest_keyboard(text: str = text_storage.GO_BACK) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text=text,
+        callback_data=ButtonsStorage.QUEST_BUTTON.callback,
     )
 
     builder.adjust(1)
@@ -292,7 +305,28 @@ def get_achievement_keyboard() -> InlineKeyboardMarkup:
 
     builder.button(
         text=text_storage.GO_BACK,
-        callback_data=ButtonsStorage.MY_PROGRES.callback,
+        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback,
+    )
+
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_pretest_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="Начать",
+        callback_data=ButtonsStorage.START_TEST_2.callback,
+    )
+
+    builder.button(
+        text="← Не сейчас",
+        callback_data=MainMenuCallbackFactory(
+            with_new_message=True,
+            with_delete_markup=True,
+            delete_message=True,
+        ),
     )
 
     builder.adjust(1)
@@ -333,8 +367,7 @@ def get_fourth_question_keyboard() -> InlineKeyboardMarkup:
         [ButtonsStorage.OPTION_4_1.get_button(),
         ButtonsStorage.OPTION_4_2.get_button(),
         ButtonsStorage.OPTION_4_3.get_button(),
-        ButtonsStorage.OPTION_4_4.get_button(),
-        ButtonsStorage.OPTION_4_5.get_button()],
+        ButtonsStorage.OPTION_4_4.get_button()]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
@@ -343,7 +376,6 @@ def get_fifth_question_keyboard() -> InlineKeyboardMarkup:
         [ButtonsStorage.OPTION_5_1.get_button(),
         ButtonsStorage.OPTION_5_2.get_button(),
         ButtonsStorage.OPTION_5_3.get_button(),
-        ButtonsStorage.OPTION_5_4.get_button(),
-        ButtonsStorage.OPTION_5_5.get_button()],
+        ButtonsStorage.OPTION_5_4.get_button()]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

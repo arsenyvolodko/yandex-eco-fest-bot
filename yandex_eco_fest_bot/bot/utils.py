@@ -25,7 +25,7 @@ from yandex_eco_fest_bot.db.tables import (
     Mission,
     UserMissionSubmission,
     Achievement,
-    UserAchievement, User,
+    UserAchievement,
 )
 
 
@@ -37,7 +37,7 @@ async def edit_photo_message(
     media = file_id or photo_url
 
     if media == static.MAIN_MENU_MEDIA_URL:
-        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/map.png")
+        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main_menu_pic.png")
 
     msg = await bot.edit_message_media(
         media=InputMediaPhoto(media=media, caption=caption, parse_mode=ParseMode.HTML),
@@ -54,11 +54,11 @@ async def send_photo_message(
     bot: Bot, chat_id: int, photo_url: str, caption: str, **kwargs
 ):
     file_id = r.get(photo_url)
-    # file_id = None
+    file_id = None
     photo = file_id or photo_url
 
     if photo == static.MAIN_MENU_MEDIA_URL:
-        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/map.png")
+        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main_menu_pic.png")
 
     try:
         msg = await bot.send_photo(
@@ -326,28 +326,13 @@ async def get_mission_task_text(
     if old_submission:
         text += f"Статус прохождения эко-миссии: <b>{old_submission.status.label}</b>\n\n"
         if old_submission.status == RequestStatus.ACCEPTED:
-            text += (f"<b>Вы набрали {mission.score + old_submission.extra_score} 🌱кредитов за выполнение эко-миссии.</b>\n"
+            text += (f"<b>Вы набрали {mission.score + old_submission.extra_score}🟢.</b>\n"
                      f"Вы не можете пройти ее повторно.\n\n")
         else:
             if old_submission.status == RequestStatus.DECLINED:
                 text += "Вы можете попробовать выполнить задание еще раз.\n"
 
-    if not old_submission or old_submission.status != RequestStatus.ACCEPTED:
-        if mission.verification_method == MissionVerificationMethod.CHECK_LIST:
-            mission_max_score = len(static.CHECK_LIST_QUESTIONS) * static.CHECK_LIST_POINT_SCORE
-        else:
-            mission_max_score = mission.score
-
-        text += f"Максимальное количество 🌱кредитов за выполнение задания - {mission_max_score}\n\n"
-
-    text += "Твое задание в рамках эко-миссии:\n"
     text += f"{mission.description}\n\n"
-
-    if mission.verification_method in static.VERIFICATION_METHOD_TEXT and (not old_submission or old_submission.status == RequestStatus.DECLINED):
-        text += f"{static.VERIFICATION_METHOD_TEXT[mission.verification_method]}\n\n"
-
-    if mission.extra_text and (not old_submission or old_submission.status == RequestStatus.DECLINED):
-        text += f"{mission.extra_text}"
 
     return text
 
@@ -399,9 +384,8 @@ async def check_any_mission_achievement(bot, user_id: int, accepted_submissions:
     location_ids = {submission.mission.location_id for submission in accepted_submissions}
     location_ids -= {static.ROBOLAB_KIDS_LOCATION_ID}
 
-    LOCATIONS_TOTAL_COUNT_WITH_MISSIONS = 12
+    LOCATIONS_TOTAL_COUNT_WITH_MISSIONS = 9
 
-    print(f"Location IDs: {location_ids}, Total Count: {LOCATIONS_TOTAL_COUNT_WITH_MISSIONS}")
     if len(location_ids) == LOCATIONS_TOTAL_COUNT_WITH_MISSIONS - 1:
         user_achievement, created = await UserAchievement.objects.get_or_create(
             user_id=user_id, achievement_id=achievement_id
@@ -426,8 +410,8 @@ async def check_recycler_achievement(bot, user_id: int, accepted_submissions: li
 async def check_fix_it_pro_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id):
     mission_ids = {submission.mission_id for submission in accepted_submissions}
 
-    UPCYCLE_ACHIEVEMENT_ID = 10
-    REPAIR_CAFE_MISSION_ID = 12
+    UPCYCLE_ACHIEVEMENT_ID = 7
+    REPAIR_CAFE_MISSION_ID = 9
 
     if REPAIR_CAFE_MISSION_ID in mission_ids and UPCYCLE_ACHIEVEMENT_ID in mission_ids:
         user_achievement, created = await UserAchievement.objects.get_or_create(
@@ -470,8 +454,8 @@ async def check_photo_achievement(bot, user_id: int, accepted_submissions: list[
 
 
 async def check_swap_star_achievement(bot, user_id: int, accepted_submissions: list[UserMissionSubmission], achievement_id: int):
-    TECH_SWAP_MISSION_ID = 3
-    ECO_SWAP_MISSION_ID = 4
+    TECH_SWAP_MISSION_ID = 2
+    ECO_SWAP_MISSION_ID = 3
 
     mission_ids = {submission.mission_id for submission in accepted_submissions}
     if TECH_SWAP_MISSION_ID in mission_ids and ECO_SWAP_MISSION_ID in mission_ids:
@@ -499,7 +483,7 @@ async def check_achievement_updates(bot, user_id: int):
     await check_any_mission_achievement(bot, user_id, accepted_submissions, 5)
 
     # 6, 'Recycler 🔄', 'Сдай вещи в боксы на переработку от Второго Дыхания'
-    await check_recycler_achievement(bot, user_id, accepted_submissions, 6)
+    # await check_recycler_achievement(bot, user_id, accepted_submissions, 6)
 
     # 7, 'Fix-It Pro 🔧', 'Проведи 1 ремонт + 1 апсайкл-проект'
     await check_fix_it_pro_achievement(bot, user_id, accepted_submissions, 7)
@@ -515,10 +499,3 @@ async def check_achievement_updates(bot, user_id: int):
 
     # 11 'Swap Star ✨', 'Проведи сделку на Эко-свопе и Техносвопе'
     await check_swap_star_achievement(bot, user_id, accepted_submissions, 11)
-
-    # recycler ??
-
-    # «Fix-It Pro» 🔧 (6 - FIX_IT_PRO_ACHIEVEMENT_ID, REPAIR_CAFE_MISSION_ID, UPCYCLING_MISSION_ID)
-
-
-
