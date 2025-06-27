@@ -86,8 +86,8 @@ async def send_photo_message(
 
 
 def get_location_media_url(location: Location):
-    print(f"{static.LOCATIONS_MEDIA_DIR}/{location.id}.png")
-    return f"{static.LOCATIONS_MEDIA_DIR}/{location.id}.png"
+    print(f"{static.LOCATIONS_MEDIA_DIR}/_{location.id}.png")
+    return f"{static.LOCATIONS_MEDIA_DIR}/_{location.id}.png"
 
 
 def get_achievement_media_url(achievement: Achievement):
