@@ -37,7 +37,7 @@ async def edit_photo_message(
     media = file_id or photo_url
 
     if media == static.MAIN_MENU_MEDIA_URL:
-        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main.png")
+        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/map.png")
 
     msg = await bot.edit_message_media(
         media=InputMediaPhoto(media=media, caption=caption, parse_mode=ParseMode.HTML),
@@ -58,7 +58,7 @@ async def send_photo_message(
     photo = file_id or photo_url
 
     if photo == static.MAIN_MENU_MEDIA_URL:
-        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main.png")
+        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/map.png")
 
     try:
         msg = await bot.send_photo(
