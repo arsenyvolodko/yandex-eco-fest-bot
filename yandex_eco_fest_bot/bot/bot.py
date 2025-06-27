@@ -928,7 +928,7 @@ async def handle_my_progres_callback(call: CallbackQuery):
     total_users_score = await UserMissionSubmission.objects.filter(
         status=RequestStatus.ACCEPTED
     ).all()
-    total_missions_score = sum([submission.mission.score for submission in total_users_score])
+    total_missions_score = sum([submission.mission.score + submission.extra_score for submission in total_users_score])
 
     await edit_photo_message(
         call.bot,
