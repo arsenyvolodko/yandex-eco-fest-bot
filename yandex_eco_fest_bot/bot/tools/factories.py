@@ -12,12 +12,6 @@ class LocationCallbackFactory(CallbackData, prefix="location_callback_factory"):
     with_new_message: bool = True
 
 
-class LocationPageCallbackFactory(
-    CallbackData, prefix="location_page_callback_factory"
-):
-    page: int
-
-
 class MissionCallbackFactory(CallbackData, prefix="mission_callback_factory"):
     id: int
 
@@ -49,12 +43,6 @@ class RequestAnswerCallbackFactory(
 
 class AchievementCallbackFactory(CallbackData, prefix="achievement_callback_factory"):
     id: int
-
-
-class AchievementPageCallbackFactory(
-    CallbackData, prefix="achievement_page_callback_factory"
-):
-    page: int
 
 
 class CheckListOptionCallbackFactory(

@@ -12,13 +12,11 @@ from yandex_eco_fest_bot.bot.schemas import LocationMissionsStatus
 from yandex_eco_fest_bot.bot.static import CAPTION_TYPE_VERIFICATION_METHODS
 from yandex_eco_fest_bot.bot.tools import states
 from yandex_eco_fest_bot.bot.tools.factories import (
-    LocationPageCallbackFactory,
     MainMenuCallbackFactory,
     LocationCallbackFactory,
     MissionCallbackFactory,
     RequestAnswerCallbackFactory,
     AchievementCallbackFactory,
-    AchievementPageCallbackFactory,
     NoVerificationMissionCallbackFactory,
     CheckListOptionCallbackFactory,
     CheckListIsReadyCallbackFactory,
@@ -186,23 +184,6 @@ async def handle_location_map_callback(call: CallbackQuery):
         photo_url=static.MAP_MEDIA_URL,
         caption=text_storage.LOCATIONS_MAP_TEXT,
         reply_markup=reply_markup,
-    )
-
-
-@router.callback_query(LocationPageCallbackFactory.filter())
-async def handle_location_page_callback(
-    call: CallbackQuery, callback_data: LocationPageCallbackFactory
-):
-    locations = await Location.objects.all()
-    print("AAA", callback_data.page)
-    await edit_photo_message(
-        call.bot,
-        call.message,
-        photo_url=static.MAP_MEDIA_URL,
-        caption=call.message.text,
-        reply_markup=get_locations_menu_keyboard(
-            locations, page_number=callback_data.page
-        ),
     )
 
 
@@ -860,6 +841,24 @@ async def handle_like_picture_callback(
 
 # Personal progres
 
+'''
+@router.callback_query(F.data == ButtonsStorage.TEAM_PROGRES.callback)
+async def handle_my_progres_callback(call: CallbackQuery):
+    user_score = await UserMissionSubmission.objects.filter(
+        status=RequestStatus.ACCEPTED
+    ).all()
+    missions_score = sum([submission.mission.score for submission in user_score])
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        photo_url=static.TEAM_WORK_MEDIA_URL,
+        caption=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text=text_storage.GO_BACK_TO_MAIN_MENU
+        ),
+    )
+
+'''
 
 @router.callback_query(F.data == ButtonsStorage.MY_PROGRES.callback)
 async def handle_my_progres_callback(call: CallbackQuery):
@@ -868,11 +867,16 @@ async def handle_my_progres_callback(call: CallbackQuery):
     ).all()
     missions_score = sum([submission.mission.score + submission.extra_score for submission in user_score])
 
+    total_users_score = await UserMissionSubmission.objects.filter(
+        status=RequestStatus.ACCEPTED
+    ).all()
+    total_missions_score = sum([submission.mission.score for submission in total_users_score])
+
     await edit_photo_message(
         call.bot,
         call.message,
         photo_url=static.PERSONAL_WORK_MEDIA_URL,
-        caption=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score),
+        caption=text_storage.PERSONAL_SCORE_TEXT.format(score=missions_score, team_score=total_missions_score),
         reply_markup=get_go_to_achievements_keyboard(),
     )
 
@@ -911,47 +915,8 @@ async def handle_achievement_callback(
         call.bot,
         message=call.message,
         photo_url=get_achievement_media_url(achievement),
-        reply_markup=get_achievement_keyboard(achievement),
+        reply_markup=get_achievement_keyboard(),
         caption=text,
-    )
-
-
-@router.callback_query(AchievementPageCallbackFactory.filter())
-async def handle_achievement_page_callback(
-    call: CallbackQuery, callback_data: AchievementPageCallbackFactory
-):
-    user_id = call.from_user.id
-    missions_score = await get_user_missions_score(user_id=user_id)
-    user_achievements = await get_user_achievements(user_id)
-
-    await edit_photo_message(
-        call.bot,
-        message=call.message,
-        photo_url=static.PERSONAL_WORK_MEDIA_URL,
-        caption=text_storage.ACHIEVEMENTS_TEXT.format(score=missions_score),
-        reply_markup=get_achievements_keyboard(
-            user_achievements, page_num=callback_data.page
-        ),
-    )
-
-
-# Team Score
-
-
-@router.callback_query(F.data == ButtonsStorage.TEAM_PROGRES.callback)
-async def handle_my_progres_callback(call: CallbackQuery):
-    user_score = await UserMissionSubmission.objects.filter(
-        status=RequestStatus.ACCEPTED
-    ).all()
-    missions_score = sum([submission.mission.score for submission in user_score])
-    await edit_photo_message(
-        call.bot,
-        call.message,
-        photo_url=static.TEAM_WORK_MEDIA_URL,
-        caption=text_storage.TEAM_SCORE_TEXT.format(score=missions_score),
-        reply_markup=get_go_to_main_menu_keyboard(
-            button_text=text_storage.GO_BACK_TO_MAIN_MENU
-        ),
     )
 
 

@@ -15,7 +15,6 @@ from yandex_eco_fest_bot.bot.schemas.missions_display_schema import (
     LocationMissionsStatus,
 )
 from yandex_eco_fest_bot.bot.static import VERIFICATION_METHOD_TO_STATE
-from yandex_eco_fest_bot.bot.tools.keyboards import button_storage
 from yandex_eco_fest_bot.bot.tools.keyboards.button_storage import ButtonsStorage
 from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_locations_menu_keyboard, get_one_button_keyboard, get_go_to_main_menu_keyboard, )
