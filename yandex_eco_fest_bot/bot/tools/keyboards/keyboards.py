@@ -52,6 +52,16 @@ def get_go_to_main_menu_keyboard(
     return builder.as_markup()
 
 
+def get_after_test_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Подписаться",
+        url="https://t.me/+qldWXHtxzIRjNzUy"
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def get_main_menu_keyboard(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [ButtonsStorage.QUEST_BUTTON.get_button()],
@@ -61,8 +71,33 @@ def get_main_menu_keyboard(user_id: int) -> InlineKeyboardMarkup:
 
     if user_id in static.ADMIN_IDS:
         inline_keyboard.append([ButtonsStorage.ADMIN_BUTTON.get_button()])
+        inline_keyboard.append([ButtonsStorage.FEED_BACK_1.get_button()])
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def get_confirm_feedback_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Подтвердить",
+        callback_data=ButtonsStorage.FEED_BACK_2.callback,
+    )
+    builder.button(
+        text=text_storage.CANCEL,
+        callback_data=MainMenuCallbackFactory(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_last_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text='Поделиться',
+        url='https://forms.yandex.ru/u/685f86ddf47e73cfae9aee62/',
+    )
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def get_quest_menu_keyboard() -> InlineKeyboardMarkup:

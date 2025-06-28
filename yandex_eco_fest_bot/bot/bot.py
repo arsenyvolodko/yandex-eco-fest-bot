@@ -37,7 +37,8 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_check_list_keyboard,
     get_picture_rating_keyboard, get_first_question_keyboard, get_second_question_keyboard, get_third_question_keyboard,
     get_fourth_question_keyboard, get_fifth_question_keyboard, get_quest_menu_keyboard, get_back_to_quest_keyboard,
-    get_achievements_keyboard, get_pretest_keyboard,
+    get_achievements_keyboard, get_pretest_keyboard, get_after_test_keyboard, get_confirm_feedback_keyboard,
+    get_last_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
     get_location_info_text,
@@ -149,6 +150,36 @@ async def handle_after_start_callback(call: CallbackQuery):
     await call.message.delete()
 
 
+@router.callback_query(F.data == ButtonsStorage.FEED_BACK_1.callback)
+async def handle_after_start_callback(call: CallbackQuery):
+    await call.message.edit_reply_markup(
+        reply_markup=get_confirm_feedback_keyboard()
+    )
+
+
+@router.callback_query(F.data == ButtonsStorage.FEED_BACK_2.callback)
+async def handle_after_start_callback(call: CallbackQuery):
+
+    await call.message.delete()
+    await call.message.answer("Отправляю..")
+
+    users = await User.objects.all()
+
+    for user in users:
+        try:
+            await call.bot.send_message(
+                chat_id=user.id,
+                text=text_storage.END_TEXT,
+                reply_markup=get_last_keyboard(),
+            )
+        except Exception:
+            pass
+
+    await call.message.answer(
+        text="Сообщение успешно разослано всем пользователям!"
+    )
+
+
 @router.callback_query(F.data == ButtonsStorage.GET_START_ACHIEVEMENT.callback)
 async def handle_get_first_achievement_callback(call: CallbackQuery):
     await call.message.edit_reply_markup(
@@ -208,7 +239,6 @@ async def handle_main_menu_callback(
 
 @router.message(Command("menu"))
 async def handle_main_menu_command(message: Message):
-    print("HEREEE")
     await send_photo_message(
         message.bot,
         message.chat.id,
@@ -908,10 +938,12 @@ async def handle_my_progres_callback(call: CallbackQuery):
 async def handle_my_progres_callback(call: CallbackQuery):
     user_achievements = await get_user_achievements(call.from_user.id)
 
-    await call.message.edit_caption(
+    await edit_photo_message(
+        call.bot,
+        call.message,
+        photo_url=static.MAIN_MENU_MEDIA_URL,
         caption=text_storage.ACHIEVEMENTS_TEXT,
         reply_markup=get_achievements_keyboard(user_achievements),
-        parse_mode=ParseMode.HTML,
     )
 
 
@@ -1061,12 +1093,23 @@ async def handle_third_question_answer(call: CallbackQuery):
 
     score_string = get_score_name(cnt)
     score = f"{cnt} {score_string}"
+    text = f'Твой результат: {score}\n\n'
+    if cnt < 4:
+        extra_text = "К сожалению, ты не набрал нужное количество баллов.\nНе расстраивайся! Если хочешь узнавать больше об экологичных привычках, подписывайся на наш канал!"
+    else:
+        extra_text = "Поздравляем! Ты набрал нужное количество баллов. Подойди на ресепшен и получи свой подарок"
+    text = text + extra_text
     await call.message.edit_text(
-        text=text_storage.TOTAL_TEST_SCORE.format(score=score),
-        reply_markup=get_go_to_main_menu_keyboard(
-            with_new_message=True
-        ),
+        text=text,
+        reply_markup=get_after_test_keyboard(),
         parse_mode=ParseMode.HTML
+    )
+    await send_photo_message(
+        call.message.bot,
+        call.message.chat.id,
+        photo_url=static.MAIN_MENU_MEDIA_URL,
+        caption=text_storage.MAIN_MENU_TEXT,
+        reply_markup=get_main_menu_keyboard(call.from_user.id),
     )
 
 

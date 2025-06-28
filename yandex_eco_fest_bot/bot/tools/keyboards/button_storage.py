@@ -26,6 +26,8 @@ class ButtonsStorage(metaclass=AutoNameButtonMeta):
     HELP = Button("Помощь")
     QUEST_BUTTON = Button("Квест")
     MAIN_MAP = Button("Карта")
+    FEED_BACK_1 = Button("Разослать сбор фидбека")
+    FEED_BACK_2 = Button("Подтвердить")
 
     ADMIN_BUTTON = Button("Отправить сообщение всем")
     GO_TO_ACHIEVEMENTS_BUTTON = Button("Бейджи →")
