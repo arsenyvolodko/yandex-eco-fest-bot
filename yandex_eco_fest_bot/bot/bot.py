@@ -244,7 +244,7 @@ async def handle_location_map_callback(call: CallbackQuery):
     await edit_photo_message(
         call.bot,
         message=call.message,
-        photo_url=static.MAP_MEDIA_URL,
+        photo_url=static.MAIN_MENU_MEDIA_URL,
         caption=text_storage.LOCATIONS_MAP_TEXT,
         reply_markup=reply_markup,
     )
@@ -1096,8 +1096,7 @@ async def handle_third_question_answer(call: CallbackQuery):
     await call.message.edit_text(
         text=text_storage.TOTAL_TEST_SCORE.format(score=score),
         reply_markup=get_go_to_main_menu_keyboard(
-            with_new_message=True,
-            with_delete_markup=True
+            with_new_message=True
         ),
         parse_mode=ParseMode.HTML
     )
