@@ -105,12 +105,10 @@ async def handle_after_start_callback(call: CallbackQuery):
 
     media_group = MediaGroupBuilder()
     media_group.add_photo(
-        media=static.PROGRAM_MEDIA_URL
+        media=static.MAIN_MAP_MEDIA_URL,
     )
     media_group.add_photo(
-        media=static.MAIN_MAP_MEDIA_URL,
-        caption="[info text]",
-        parse_mode=ParseMode.HTML,
+        media=static.PROGRAM_MEDIA_URL
     )
 
     await call.message.answer_media_group(
@@ -118,13 +116,11 @@ async def handle_after_start_callback(call: CallbackQuery):
     )
 
     await call.message.answer(
-        text="[text]",
+        text=text_storage.MAIN_MAP_TEXT,
         reply_markup=get_one_button_keyboard(
-            ButtonsStorage.THANKS_BUTTON
+            ButtonsStorage.THANKS_BUTTON,
         )
     )
-
-
 
 # MAIN_MAP
 
@@ -133,7 +129,7 @@ async def handle_after_start_callback(call: CallbackQuery):
     await edit_photo_message(
         call.bot,
         message=call.message,
-        photo_url=static.MAIN_MAP_MEDIA_URL,
+        photo_url=static.BIG_MAP_MEDIA_URL,
         caption=None,
         reply_markup=get_go_to_main_menu_keyboard(text_storage.GO_BACK_TO_MAIN_MENU)
     )
@@ -141,7 +137,8 @@ async def handle_after_start_callback(call: CallbackQuery):
 
 @router.callback_query(F.data == ButtonsStorage.THANKS_BUTTON.callback)
 async def handle_after_start_callback(call: CallbackQuery):
-    await call.message.edit_text(
+    await call.message.delete_reply_markup()
+    await call.message.answer(
         text_storage.INTRO_TEXT,
         reply_markup=get_go_to_main_menu_keyboard(button_text="Интересно!", with_delete_markup=True, with_new_message=True)
     )

@@ -13,7 +13,7 @@ class AutoNameButtonMeta(type):
 class ButtonsStorage(metaclass=AutoNameButtonMeta):
 
     AFTER_START_BUTTON = Button("Привет!")
-    THANKS_BUTTON = Button("Спасибо!")
+    THANKS_BUTTON = Button("Здорово!")
     GET_START_ACHIEVEMENT = Button("Поехали!")
     HIDE_MESSAGE = Button("Скрыть сообщение")
 
