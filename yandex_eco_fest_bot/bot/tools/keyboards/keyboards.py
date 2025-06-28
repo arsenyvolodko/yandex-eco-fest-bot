@@ -111,10 +111,6 @@ def get_quest_menu_keyboard() -> InlineKeyboardMarkup:
         callback_data=ButtonsStorage.MY_PROGRES.callback,
     )
     builder.button(
-        text=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.text,
-        callback_data=ButtonsStorage.GO_TO_ACHIEVEMENTS_BUTTON.callback,
-    )
-    builder.button(
         text=text_storage.GO_BACK_TO_MAIN_MENU,
         callback_data=MainMenuCallbackFactory(),
     )

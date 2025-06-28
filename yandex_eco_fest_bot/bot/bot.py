@@ -29,7 +29,6 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_go_to_main_menu_keyboard,
     get_one_button_keyboard,
     get_locations_menu_keyboard,
-    get_missions_keyboard,
     get_specific_mission_keyboard,
     get_cancel_state_keyboard,
     get_achievement_keyboard,
@@ -41,11 +40,9 @@ from yandex_eco_fest_bot.bot.tools.keyboards.keyboards import (
     get_last_keyboard,
 )
 from yandex_eco_fest_bot.bot.utils import (
-    get_location_info_text,
     get_state_by_verification_method,
     VERIFICATION_METHOD_TO_STATE,
     save_request_to_redis,
-    get_missions_with_score,
     get_user_achievements,
     resend_submission_photo_util,
     resend_submission_text_util,
@@ -92,11 +89,6 @@ async def handle_start_command(message: Message):
 
 @router.callback_query(F.data == ButtonsStorage.AFTER_START_BUTTON.callback)
 async def handle_after_start_callback(call: CallbackQuery):
-    if call.from_user.first_name:
-        name = f" {call.from_user.first_name}"
-    else:
-        name = ""
-
     await call.message.edit_reply_markup(
         reply_markup=None
     )
