@@ -103,7 +103,7 @@ async def handle_after_start_callback(call: CallbackQuery):
 
     media_group = MediaGroupBuilder()
     media_group.add_photo(
-        media=static.MAIN_MAP_MEDIA_URL,
+        media=static.BIG_MAP_MEDIA_URL,
     )
     media_group.add_photo(
         media=static.PROGRAM_MEDIA_URL
@@ -286,7 +286,7 @@ async def handle_location_map_callback(call: CallbackQuery):
     await edit_photo_message(
         call.bot,
         message=call.message,
-        photo_url=static.MAP_MEDIA_URL,
+        photo_url=static.MAIN_MAP_MEDIA_URL,
         caption=text_storage.LOCATIONS_MAP_TEXT,
         reply_markup=reply_markup,
     )
