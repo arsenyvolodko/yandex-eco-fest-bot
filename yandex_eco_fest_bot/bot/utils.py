@@ -468,33 +468,34 @@ async def check_swap_star_achievement(bot, user_id: int, accepted_submissions: l
 
 async def check_achievement_updates(bot, user_id: int):
     # user = await User.objects.get(id=user_id)
-
-    accepted_submissions = await UserMissionSubmission.objects.filter(
-        user_id=user_id, status=RequestStatus.ACCEPTED
-    ).all()
-
-    user_score = await get_user_missions_score(user_id)
-
-    # 2-4 «Зелёный старт» 🚀, «Сила сотни» 💯, «Eco Legend» 🏆 (1-3)
-    await check_credits_achievements(bot, user_id, user_score)
-
-    # 5, 'Тур по зонам 🗺', 'Выполни ≥ 1 миссии в каждой зоне-активации'
-    await check_any_mission_achievement(bot, user_id, accepted_submissions, 5)
-
-    # 6, 'Recycler 🔄', 'Сдай вещи в боксы на переработку от Второго Дыхания'
-    # await check_recycler_achievement(bot, user_id, accepted_submissions, 6)
-
-    # 7, 'Fix-It Pro 🔧', 'Проведи 1 ремонт + 1 апсайкл-проект'
-    await check_fix_it_pro_achievement(bot, user_id, accepted_submissions, 7)
-
-    # 8, 'VR-Энтузиаст 🥽', 'Создай ≥ 1 VR-прототип + 1 инсайт'
-    pass
-
-    # 9, 'Digital Detoxer 🧹', 'Закрой ≥ 8 пунктов чек-листа Data Detox'
-    await check_digital_detoxer_achievement(bot, user_id, accepted_submissions, 9)
-
-    # 10 'Фотохудожник 📸', 'Выполни 3 качественных фото-миссий. (ручная проверка)'
-    await check_photo_achievement(bot, user_id, accepted_submissions, 10)
-
-    # 11 'Swap Star ✨', 'Проведи сделку на Эко-свопе и Техносвопе'
-    await check_swap_star_achievement(bot, user_id, accepted_submissions, 11)
+    return
+    #
+    # accepted_submissions = await UserMissionSubmission.objects.filter(
+    #     user_id=user_id, status=RequestStatus.ACCEPTED
+    # ).all()
+    #
+    # user_score = await get_user_missions_score(user_id)
+    #
+    # # 2-4 «Зелёный старт» 🚀, «Сила сотни» 💯, «Eco Legend» 🏆 (1-3)
+    # await check_credits_achievements(bot, user_id, user_score)
+    #
+    # # 5, 'Тур по зонам 🗺', 'Выполни ≥ 1 миссии в каждой зоне-активации'
+    # await check_any_mission_achievement(bot, user_id, accepted_submissions, 5)
+    #
+    # # 6, 'Recycler 🔄', 'Сдай вещи в боксы на переработку от Второго Дыхания'
+    # # await check_recycler_achievement(bot, user_id, accepted_submissions, 6)
+    #
+    # # 7, 'Fix-It Pro 🔧', 'Проведи 1 ремонт + 1 апсайкл-проект'
+    # await check_fix_it_pro_achievement(bot, user_id, accepted_submissions, 7)
+    #
+    # # 8, 'VR-Энтузиаст 🥽', 'Создай ≥ 1 VR-прототип + 1 инсайт'
+    # pass
+    #
+    # # 9, 'Digital Detoxer 🧹', 'Закрой ≥ 8 пунктов чек-листа Data Detox'
+    # await check_digital_detoxer_achievement(bot, user_id, accepted_submissions, 9)
+    #
+    # # 10 'Фотохудожник 📸', 'Выполни 3 качественных фото-миссий. (ручная проверка)'
+    # await check_photo_achievement(bot, user_id, accepted_submissions, 10)
+    #
+    # # 11 'Swap Star ✨', 'Проведи сделку на Эко-свопе и Техносвопе'
+    # await check_swap_star_achievement(bot, user_id, accepted_submissions, 11)
