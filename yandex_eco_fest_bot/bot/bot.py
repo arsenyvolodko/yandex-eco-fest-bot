@@ -86,6 +86,7 @@ async def handle_start_command(message: Message):
     await message.answer(
         text_storage.START_TEXT,
         reply_markup=get_one_button_keyboard(button=ButtonsStorage.AFTER_START_BUTTON),
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -98,10 +99,6 @@ async def handle_after_start_callback(call: CallbackQuery):
 
     await call.message.edit_reply_markup(
         reply_markup=None
-    )
-
-    await call.message.answer(
-        text=text_storage.AFTER_START_TEXT.format(name=name),
     )
 
     media_group = MediaGroupBuilder()
@@ -120,7 +117,8 @@ async def handle_after_start_callback(call: CallbackQuery):
         text=text_storage.MAIN_MAP_TEXT,
         reply_markup=get_one_button_keyboard(
             ButtonsStorage.THANKS_BUTTON,
-        )
+        ),
+        parse_mode = ParseMode.HTML,
     )
 
 # MAIN_MAP
@@ -141,7 +139,8 @@ async def handle_after_start_callback(call: CallbackQuery):
     await call.message.delete_reply_markup()
     await call.message.answer(
         text_storage.INTRO_TEXT,
-        reply_markup=get_go_to_main_menu_keyboard(button_text="Интересно!", with_delete_markup=True, with_new_message=True)
+        reply_markup=get_go_to_main_menu_keyboard(button_text="Поехали!", with_delete_markup=True, with_new_message=True),
+        parse_mode = ParseMode.HTML,
     )
 
 
@@ -1097,7 +1096,7 @@ async def handle_third_question_answer(call: CallbackQuery):
     if cnt < 4:
         extra_text = "К сожалению, ты не набрал нужное количество баллов.\nНе расстраивайся! Если хочешь узнавать больше об экологичных привычках, подписывайся на наш канал!"
     else:
-        extra_text = "Поздравляем! Ты набрал нужное количество баллов. Подойди на ресепшен и получи свой подарок"
+        extra_text = "Поздравляем! Ты набрал нужное количество баллов. Подойди на ресепшен и <b>получи свой подарок</b>\n\nА если хочешь узнавать больше об экологичных привычках, подписывайся на наш канал!"
     text = text + extra_text
     await call.message.edit_text(
         text=text,
