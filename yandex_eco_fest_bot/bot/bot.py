@@ -249,6 +249,7 @@ async def handle_location_map_callback(call: CallbackQuery):
         reply_markup=reply_markup,
     )
 
+
 @router.callback_query(F.data == ButtonsStorage.LOCATIONS_MAP.callback)
 async def handle_location_map_callback(call: CallbackQuery):
     locations = await Location.objects.filter(parent=None).all()
@@ -260,29 +261,6 @@ async def handle_location_map_callback(call: CallbackQuery):
         caption=text_storage.LOCATIONS_MAP_TEXT,
         reply_markup=reply_markup,
     )
-
-# @router.callback_query(LocationCallbackFactory.filter())
-# async def handle_location_callback(
-#     call: CallbackQuery, callback_data: LocationCallbackFactory, state: FSMContext
-# ):
-#     await state.clear()
-#
-#     location = await Location.objects.get(id=callback_data.id)
-#     text = get_location_info_text(location)
-#
-#     missions_status_score_schema: LocationMissionsStatus = (
-#         await get_missions_with_score(user_id=call.from_user.id, location=location)
-#     )
-#     reply_markup = get_missions_keyboard(missions_status_score_schema)
-#
-#     await edit_photo_message(
-#         call.bot,
-#         call.message,
-#         get_location_media_url(location),
-#         caption=text,
-#         reply_markup=reply_markup,
-#     )
-
 
 @router.callback_query(MissionCallbackFactory.filter())
 async def handle_mission_callback(
@@ -332,16 +310,6 @@ async def handle_no_verification_mission_callback(
     ).first()
 
     if old_submission and old_submission.status == RequestStatus.ACCEPTED:
-        # await call.message.edit_text(
-        #     text=text_storage.MISSION_ALREADY_ACCEPTED_ALERT,
-        #     reply_markup=get_go_to_main_menu_keyboard(
-        #         text_storage.GO_BACK_TO_MAIN_MENU,
-        #         with_new_message=True,
-        #         with_delete_markup=True,
-        #     ),
-        #     parse_mode=ParseMode.HTML,
-        # )
-        # return
         await edit_photo_message(
             call.bot,
             message=call.message,
