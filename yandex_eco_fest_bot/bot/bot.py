@@ -93,24 +93,25 @@ async def handle_after_start_callback(call: CallbackQuery):
         reply_markup=None
     )
 
-    media_group = MediaGroupBuilder()
-    media_group.add_photo(
-        media=static.BIG_MAP_MEDIA_URL,
-    )
-    media_group.add_photo(
-        media=static.PROGRAM_MEDIA_URL
-    )
-
-    await call.message.answer_media_group(
-        media_group.build(),
-    )
-
-    await call.message.answer(
-        text=text_storage.MAIN_MAP_TEXT,
+    # media_group = MediaGroupBuilder()
+    # media_group.add_photo(
+    #     media=static.BIG_MAP_MEDIA_URL,
+    # )
+    # media_group.add_photo(
+    #     media=static.PROGRAM_MEDIA_URL
+    # )
+    #
+    # await call.message.answer_media_group(
+    #     media_group.build(),
+    # )
+    await send_photo_message(
+        call.bot,
+        chat_id=call.message.chat.id,
+        photo_url=static.BIG_MAP_MEDIA_URL,
+        caption=text_storage.MAIN_MAP_TEXT,
         reply_markup=get_one_button_keyboard(
             ButtonsStorage.THANKS_BUTTON,
         ),
-        parse_mode = ParseMode.HTML,
     )
 
 # MAIN_MAP
