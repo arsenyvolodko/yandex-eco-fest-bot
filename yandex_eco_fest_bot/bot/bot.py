@@ -646,7 +646,7 @@ async def handle_submission_util(
         chat_id=message.from_user.id, message_id=msg_id, reply_markup=None
     )
 
-    message = await message.answer(
+    bot_message = await message.answer(
         text=text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
             request_status=RequestStatus.PENDING.label
         ),
@@ -657,15 +657,25 @@ async def handle_submission_util(
         # ),
         parse_mode=ParseMode.HTML,
     )
+
+    # await send_photo_message(
+    #     message.bot,
+    #     message.chat.id,
+    #     photo_url=static.MAIN_MENU_MEDIA_URL,
+    #     caption=text_storage.MAIN_MENU_TEXT,
+    #     reply_markup=get_main_menu_keyboard(message.from_user.id),
+    # )
+    print("AAAAAA")
+    reply_markup = get_quest_menu_keyboard()
     await send_photo_message(
         message.bot,
-        message.chat.id,
+        chat_id=message.from_user.id,
         photo_url=static.MAIN_MENU_MEDIA_URL,
-        caption=text_storage.MAIN_MENU_TEXT,
-        reply_markup=get_main_menu_keyboard(message.from_user.id),
+        caption=text_storage.LOCATIONS_MAP_TEXT,
+        reply_markup=reply_markup,
     )
 
-    save_request_to_redis(user_mission_submission.id, message.message_id)
+    save_request_to_redis(user_mission_submission.id, bot_message.message_id)
 
 
 @router.message(states.WAITING_FOR_ROBOT_PHOTO)
