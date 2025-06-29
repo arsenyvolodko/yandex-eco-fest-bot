@@ -36,8 +36,6 @@ async def edit_photo_message(
     file_id = None
     media = file_id or photo_url
 
-    if media == static.MAIN_MENU_MEDIA_URL:
-        media = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main_menu_pic.png")
 
     msg = await bot.edit_message_media(
         media=InputMediaPhoto(media=media, caption=caption, parse_mode=ParseMode.HTML),
@@ -56,9 +54,6 @@ async def send_photo_message(
     file_id = r.get(photo_url)
     file_id = None
     photo = file_id or photo_url
-
-    if photo == static.MAIN_MENU_MEDIA_URL:
-        photo = FSInputFile(f"{config.LOCAL_MEDIA_DIR}/main_menu_pic.png")
 
     try:
         msg = await bot.send_photo(
@@ -86,7 +81,7 @@ async def send_photo_message(
 
 
 def get_location_media_url(location: Location):
-    return f"{static.LOCATIONS_MEDIA_DIR}/{location.id}_.png"
+    return f"{static.LOCATIONS_MEDIA_DIR}/loc_{location.id}.png"
 
 
 def get_achievement_media_url(achievement: Achievement):
@@ -323,10 +318,10 @@ async def get_mission_task_text(
     text = f"<b>{mission.name}</b>\n\n"
 
     if old_submission:
-        text += f"Статус прохождения эко-миссии: <b>{old_submission.status.label}</b>\n\n"
+        text += f"Статус: <b>{old_submission.status.label}</b>\n"
         if old_submission.status == RequestStatus.ACCEPTED:
-            text += (f"<b>Вы набрали {mission.score + old_submission.extra_score}🟢.</b>\n"
-                     f"Вы не можете пройти ее повторно.\n\n")
+            text += (f"<b>Вы набрали {mission.score + old_submission.extra_score}🟢.</b>\n\n"
+                     f"Повторное прохождение не предусмотрено\n\n")
         else:
             if old_submission.status == RequestStatus.DECLINED:
                 text += "Вы можете попробовать выполнить задание еще раз.\n"

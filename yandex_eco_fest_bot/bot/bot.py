@@ -114,6 +114,7 @@ async def handle_after_start_callback(call: CallbackQuery):
         ),
     )
 
+
 # MAIN_MAP
 
 @router.callback_query(F.data == ButtonsStorage.MAIN_MAP.callback)
@@ -130,10 +131,14 @@ async def handle_after_start_callback(call: CallbackQuery):
 @router.callback_query(F.data == ButtonsStorage.THANKS_BUTTON.callback)
 async def handle_after_start_callback(call: CallbackQuery):
     await call.message.delete_reply_markup()
-    await call.message.answer(
-        text_storage.INTRO_TEXT,
-        reply_markup=get_go_to_main_menu_keyboard(button_text="Поехали!", with_delete_markup=True, with_new_message=True),
-        parse_mode = ParseMode.HTML,
+    await send_photo_message(
+        call.bot,
+        chat_id=call.message.chat.id,
+        photo_url=static.KENT_MEDIA_URL,
+        caption=text_storage.INTRO_TEXT,
+        reply_markup=get_go_to_main_menu_keyboard(
+            button_text="Поехали!", with_delete_markup=True, with_new_message=True
+        ),
     )
 
 
@@ -151,7 +156,6 @@ async def handle_after_start_callback(call: CallbackQuery):
 
 @router.callback_query(F.data == ButtonsStorage.FEED_BACK_2.callback)
 async def handle_after_start_callback(call: CallbackQuery):
-
     await call.message.delete()
     await call.message.answer("Отправляю..")
 
@@ -187,7 +191,7 @@ async def handle_get_first_achievement_callback(call: CallbackQuery):
 
 @router.callback_query(MainMenuCallbackFactory.filter())
 async def handle_main_menu_callback(
-    call: CallbackQuery, callback_data: MainMenuCallbackFactory, state: FSMContext
+        call: CallbackQuery, callback_data: MainMenuCallbackFactory, state: FSMContext
 ):
     state_data = await state.get_data()
     if msg_id := state_data.get("msg_id"):
@@ -257,6 +261,7 @@ async def handle_admin_button_callback(call: CallbackQuery, state: FSMContext):
 
     await state.set_state(states.WAITING_FOR_ADMIN_MESSAGE)
 
+
 # Locations
 
 
@@ -276,6 +281,7 @@ async def handle_location_map_callback(call: CallbackQuery):
 async def handle_location_map_callback(call: CallbackQuery):
     locations = await Location.objects.filter(parent=None).all()
     reply_markup = get_locations_menu_keyboard(locations)
+    print("AAAA", static.MAIN_MAP_MEDIA_URL)
     await edit_photo_message(
         call.bot,
         message=call.message,
@@ -284,9 +290,10 @@ async def handle_location_map_callback(call: CallbackQuery):
         reply_markup=reply_markup,
     )
 
+
 @router.callback_query(MissionCallbackFactory.filter())
 async def handle_mission_callback(
-    call: CallbackQuery, callback_data: MissionCallbackFactory, state: FSMContext
+        call: CallbackQuery, callback_data: MissionCallbackFactory, state: FSMContext
 ):
     await state.clear()
 
@@ -324,7 +331,7 @@ async def handle_mission_callback(
 
 @router.callback_query(NoVerificationMissionCallbackFactory.filter())
 async def handle_no_verification_mission_callback(
-    call: CallbackQuery, callback_data: NoVerificationMissionCallbackFactory
+        call: CallbackQuery, callback_data: NoVerificationMissionCallbackFactory
 ):
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
@@ -371,7 +378,7 @@ async def handle_no_verification_mission_callback(
 
 @router.callback_query(CheckListOptionCallbackFactory.filter())
 async def handle_checklist_mission_callback(
-    call: CallbackQuery, callback_data: CheckListOptionCallbackFactory
+        call: CallbackQuery, callback_data: CheckListOptionCallbackFactory
 ):
     reply_markup = call.message.reply_markup
     inline_keyboard = reply_markup.inline_keyboard
@@ -402,9 +409,9 @@ async def handle_checklist_mission_callback(
 
 @router.callback_query(NoVerificationWithDialogCallbackFactory.filter())
 async def handle_mission_with_dialog_callback(
-    call: CallbackQuery,
-    callback_data: NoVerificationWithDialogCallbackFactory,
-    state: FSMContext,
+        call: CallbackQuery,
+        callback_data: NoVerificationWithDialogCallbackFactory,
+        state: FSMContext,
 ):
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
@@ -439,7 +446,7 @@ async def handle_mission_with_dialog_callback(
 
 @router.callback_query(CheckListIsReadyCallbackFactory.filter())
 async def evaluate_check_list_score_callback(
-    call: CallbackQuery, callback_data: CheckListIsReadyCallbackFactory
+        call: CallbackQuery, callback_data: CheckListIsReadyCallbackFactory
 ):
     mission = await Mission.objects.get(id=callback_data.mission_id)
 
@@ -491,7 +498,7 @@ async def evaluate_check_list_score_callback(
 
 
 async def check_old_submissions(
-    message: Message, mission_id: int, verification_method: MissionVerificationMethod
+        message: Message, mission_id: int, verification_method: MissionVerificationMethod
 ) -> bool:
     if not mission_id:
 
@@ -547,7 +554,7 @@ async def check_old_submissions(
 
 
 async def handle_verification_code_mission(
-    user: User, mission: Mission, message: Message, msg_id: int, state: FSMContext
+        user: User, mission: Mission, message: Message, msg_id: int, state: FSMContext
 ):
     success = check_verification_code(mission, message.text)
     answer = await process_verification_code_submission(mission, user.id, success)
@@ -583,7 +590,7 @@ async def handle_verification_code_mission(
 
 
 async def handle_submission_util(
-    message: Message, state: FSMContext, verification_method: MissionVerificationMethod
+        message: Message, state: FSMContext, verification_method: MissionVerificationMethod
 ):
     state_data = await state.get_data()
     mission_id = state_data.get("mission_id")
@@ -622,8 +629,8 @@ async def handle_submission_util(
         file_id = message.photo[-1].file_id
         await resend_submission_photo_util(message.bot, text, file_id, **resend_kwargs)
     elif (
-        verification_method == MissionVerificationMethod.VOICE
-        or verification_method == MissionVerificationMethod.VIDEO
+            verification_method == MissionVerificationMethod.VOICE
+            or verification_method == MissionVerificationMethod.VIDEO
     ):
         await state.clear()
         file_id = message.voice.file_id if message.voice else message.video_note.file_id
@@ -643,12 +650,19 @@ async def handle_submission_util(
         text=text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
             request_status=RequestStatus.PENDING.label
         ),
-        reply_markup=get_go_to_main_menu_keyboard(
-            button_text=text_storage.GREAT,
-            with_new_message=True,
-            with_delete_markup=True,
-        ),
+        # reply_markup=get_go_to_main_menu_keyboard(
+        #     button_text=text_storage.GREAT,
+        #     with_new_message=True,
+        #     with_delete_markup=True,
+        # ),
         parse_mode=ParseMode.HTML,
+    )
+    await send_photo_message(
+        message.bot,
+        message.chat.id,
+        photo_url=static.MAIN_MENU_MEDIA_URL,
+        caption=text_storage.MAIN_MENU_TEXT,
+        reply_markup=get_main_menu_keyboard(message.from_user.id),
     )
 
     save_request_to_redis(user_mission_submission.id, message.message_id)
@@ -779,7 +793,7 @@ async def handle_text_submission(message: Message, state: FSMContext):
 
 @router.callback_query(RequestAnswerCallbackFactory.filter())
 async def handle_request_answer_callback(
-    call: CallbackQuery, callback_data: RequestAnswerCallbackFactory
+        call: CallbackQuery, callback_data: RequestAnswerCallbackFactory
 ):
     request_id = callback_data.request_id
     is_accepted = callback_data.is_accepted
@@ -800,8 +814,8 @@ async def handle_request_answer_callback(
         text = f"{call.message.caption}\n\nСтатус: {status.label}"
         await call.message.edit_caption(caption=text, reply_markup=None)
         if (
-            mission.verification_method == MissionVerificationMethod.PHOTO
-            and status == RequestStatus.ACCEPTED
+                mission.verification_method == MissionVerificationMethod.PHOTO
+                and status == RequestStatus.ACCEPTED
         ):
             # await send_picture_for_rating(call.bot, user_mission_submission.id, call.message.photo[-1].file_id)
             await resend_submission_photo_util(
@@ -833,16 +847,18 @@ async def handle_request_answer_callback(
         edit_old_message_new_text = text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
             request_status=RequestStatus.ACCEPTED.label
         )
+        edit_old_message_new_text += "\n" + (f"Вы набрали {user_mission_submission.score} 🟢\n\n"
+                                             f"Повторное прохождение не предусмотрено")
 
-        text = text_storage.SUBMISSION_ACCEPTED.format(
-            mission_name=mission.name,
-            score=mission.score,
-        )
-        reply_markup = get_go_to_main_menu_keyboard(
-            button_text=text_storage.GREAT,
-            with_new_message=True,
-            with_delete_markup=True,
-        )
+        # text = text_storage.SUBMISSION_ACCEPTED.format(
+        #     mission_name=mission.name,
+        #     score=mission.score,
+        # )
+        # reply_markup = get_go_to_main_menu_keyboard(
+        #     button_text=text_storage.GREAT,
+        #     with_new_message=True,
+        #     with_delete_markup=True,
+        # )
 
         await check_achievement_updates(call.bot, user_mission_submission.user_id)
 
@@ -851,24 +867,25 @@ async def handle_request_answer_callback(
         edit_old_message_new_text = text_storage.SUBMISSION_SUCCESSFULLY_SENT.format(
             request_status=RequestStatus.DECLINED.label
         )
+        edit_old_message_new_text += "\nНе расстраивайтесь! Попробуйте еще раз"
 
-        if call.from_user.username:
+        # if call.from_user.username:
+        #
+        #     text = text_storage.SUBMISSION_REJECTED_WITH_MODERATOR.format(
+        #         mission_name=mission.name,
+        #         moderator=f"@{call.from_user.username}",
+        #     )
+        #
+        # else:
+        #     text = text_storage.SUBMISSION_REJECTED.format(
+        #         mission_name=mission.name,
+        #     )
 
-            text = text_storage.SUBMISSION_REJECTED_WITH_MODERATOR.format(
-                mission_name=mission.name,
-                moderator=f"@{call.from_user.username}",
-            )
-
-        else:
-            text = text_storage.SUBMISSION_REJECTED.format(
-                mission_name=mission.name,
-            )
-
-        reply_markup = get_go_to_main_menu_keyboard(
-            button_text=text_storage.GOT_IT,
-            with_new_message=True,
-            with_delete_markup=True,
-        )
+        # reply_markup = get_go_to_main_menu_keyboard(
+        #     button_text=text_storage.GOT_IT,
+        #     with_new_message=True,
+        #     with_delete_markup=True,
+        # )
 
     if message_id:
         await call.bot.edit_message_text(
@@ -879,15 +896,15 @@ async def handle_request_answer_callback(
             parse_mode=ParseMode.HTML,
         )
 
-    kwargs["text"] = text
-    kwargs["reply_markup"] = reply_markup
-
-    await call.bot.send_message(**kwargs)
+    # kwargs["text"] = text
+    # kwargs["reply_markup"] = reply_markup
+    #
+    # await call.bot.send_message(**kwargs)
 
 
 @router.callback_query(LikePictureCallbackFactory.filter())
 async def handle_like_picture_callback(
-    call: CallbackQuery, callback_data: LikePictureCallbackFactory
+        call: CallbackQuery, callback_data: LikePictureCallbackFactory
 ):
     user_mission_submission_id = callback_data.user_mission_submission_id
     user_mission_submission: UserMissionSubmission = (
@@ -941,7 +958,7 @@ async def handle_my_progres_callback(call: CallbackQuery):
 
 @router.callback_query(AchievementCallbackFactory.filter())
 async def handle_achievement_callback(
-    call: CallbackQuery, callback_data: AchievementCallbackFactory
+        call: CallbackQuery, callback_data: AchievementCallbackFactory
 ):
     achievement = await Achievement.objects.get(id=callback_data.id)
 
@@ -1026,6 +1043,7 @@ async def handle_first_question_answer(call: CallbackQuery):
         parse_mode=ParseMode.HTML
     )
 
+
 @router.callback_query(F.data.in_(static.TEST_Q_2_BUTTONS))
 async def handle_second_question_answer(call: CallbackQuery):
     if call.data == ButtonsStorage.OPTION_2_1.callback:
@@ -1039,6 +1057,7 @@ async def handle_second_question_answer(call: CallbackQuery):
         parse_mode=ParseMode.HTML
     )
 
+
 @router.callback_query(F.data.in_(static.TEST_Q_3_BUTTONS))
 async def handle_third_question_answer(call: CallbackQuery):
     if call.data == ButtonsStorage.OPTION_3_2.callback:
@@ -1051,6 +1070,7 @@ async def handle_third_question_answer(call: CallbackQuery):
         reply_markup=get_fourth_question_keyboard(),
         parse_mode=ParseMode.HTML
     )
+
 
 @router.callback_query(F.data.in_(static.TEST_Q_4_BUTTONS))
 async def handle_third_question_answer(call: CallbackQuery):
@@ -1085,11 +1105,11 @@ async def handle_third_question_answer(call: CallbackQuery):
 
     score_string = get_score_name(cnt)
     score = f"{cnt} {score_string}"
-    text = f'Твой результат: {score}\n\n'
+    text = f'Ваш результат: {score}\n\n'
     if cnt < 4:
-        extra_text = "К сожалению, ты не набрал нужное количество баллов.\nНе расстраивайся! Если хочешь узнавать больше об экологичных привычках, подписывайся на наш канал!"
+        extra_text = "К сожалению, вы не набрали нужное количество баллов.\nНе расстраивайся! Если хочешь узнавать больше об экологичных привычках, подписывайтесь на наш канал!"
     else:
-        extra_text = "Поздравляем! Ты набрал нужное количество баллов. Подойди на ресепшен и <b>получи свой подарок</b>\n\nА если хочешь узнавать больше об экологичных привычках, подписывайся на наш канал!"
+        extra_text = "Поздравляем! Вы набрали нужное количество баллов. Подойди на ресепшен и получи свой подарок\n\nА если хочешь узнавать больше об экологичных привычках, подписывайтесь на наш канал!"
     text = text + extra_text
     await call.message.edit_text(
         text=text,
@@ -1107,7 +1127,6 @@ async def handle_third_question_answer(call: CallbackQuery):
 
 @router.message(states.WAITING_FOR_ADMIN_MESSAGE)
 async def handle_robot_picture_submission(message: Message, state: FSMContext):
-
     await state.clear()
 
     if message.from_user.id not in static.ADMIN_IDS:

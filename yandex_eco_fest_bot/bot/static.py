@@ -33,13 +33,12 @@ CHECK_LIST_QUESTIONS = [
 ADMIN_IDS = [506954303, 379924180]
 LOCATIONS_MEDIA_DIR = f"{MEDIA_DIR}/locations"
 ACHIEVEMENTS_MEDIA_DIR = f"{MEDIA_DIR}/achievements"
-PERSONAL_WORK_MEDIA_URL = f"{MEDIA_DIR}/personal_work.png"
-TEAM_WORK_MEDIA_URL = f"{MEDIA_DIR}/team_work.png"
-MAIN_MENU_MEDIA_URL = f"{MEDIA_DIR}/main_menu_pic.png"
-PROGRAM_MEDIA_URL = f"{MEDIA_DIR}/program.png"
+PERSONAL_WORK_MEDIA_URL = f"{MEDIA_DIR}/my_progress.png"
+MAIN_MENU_MEDIA_URL = f"{MEDIA_DIR}/menu_picture.png"
+KENT_MEDIA_URL = f"{MEDIA_DIR}/kent.png"
 
-MAIN_MAP_MEDIA_URL = f"{MEDIA_DIR}/map_small_.png"
-BIG_MAP_MEDIA_URL = f"{MEDIA_DIR}/map_full.png"
+MAIN_MAP_MEDIA_URL = f"{MEDIA_DIR}/small_mapp.png"
+BIG_MAP_MEDIA_URL = f"{MEDIA_DIR}/big_mapp.png"
 
 COMMON_PICTURES_CHAT_ID = -1002672226725  # https://t.me/+MI4JcU5xwSc4NTYy
 KIDS_ROBOTS_CHAT_ID = -1002682842161  # https://t.me/+9sNd3OtsEgAzMzFi
