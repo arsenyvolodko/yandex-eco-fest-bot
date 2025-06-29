@@ -299,7 +299,7 @@ async def handle_mission_callback(
 
     mission = await Mission.objects.get(id=callback_data.id)
     old_submission: UserMissionSubmission = await UserMissionSubmission.objects.filter(
-        mission_id=mission.id
+        mission_id=mission.id, user_id=call.from_user.id
     ).first()
     status = old_submission.status if old_submission else None
 
