@@ -167,6 +167,7 @@ async def handle_after_start_callback(call: CallbackQuery):
                 chat_id=user.id,
                 text=text_storage.END_TEXT,
                 reply_markup=get_last_keyboard(),
+                parse_mode=ParseMode.HTML
             )
         except Exception:
             pass
