@@ -324,7 +324,7 @@ async def get_mission_task_text(
                      f"Повторное прохождение не предусмотрено\n\n")
         else:
             if old_submission.status == RequestStatus.DECLINED:
-                text += "Вы можете попробовать выполнить задание еще раз.\n"
+                text += "Вы можете попробовать выполнить задание еще раз.\n\n"
 
     text += f"{mission.description}\n\n"
 
